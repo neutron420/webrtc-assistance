@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routes import audio, evaluation, session, user, progress
+from routes import audio, evaluation, session, user, progress, seed
 from models.schema import HealthCheckResponse
 from models.database import engine
 from models.domain import Base
@@ -79,6 +79,7 @@ def create_app() -> FastAPI:
     app.include_router(audio.router,      prefix="",           tags=["🎤 Audio Processing"])
     app.include_router(evaluation.router, prefix="/scoring",   tags=["📝 GPT Evaluations"])
     app.include_router(progress.router,   prefix="/progress",  tags=["📈 Progress Tracking"])
+    app.include_router(seed.router,       prefix="/seed",      tags=["🌱 Demo Seeding"])
 
     # ──────────────────────────────────────────────
     # Health check endpoint
