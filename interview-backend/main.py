@@ -1,8 +1,10 @@
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import audio
+from routes import audio, evaluation
 from models.schema import HealthCheckResponse
+from models.database import engine
+from models.domain import Base
 
 # Configure logging
 logging.basicConfig(
@@ -21,6 +23,13 @@ def create_app() -> FastAPI:
         version="1.0.0"
     )
 
+    # Database Initialization on startup
+    @app.on_event("startup")
+    async def startup_event():
+        logger.info("Initializing database...")
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
     # Configure CORS - allow frontend to connect
     app.add_middleware(
         CORSMiddleware,
@@ -32,6 +41,7 @@ def create_app() -> FastAPI:
 
     # Include routers
     app.include_router(audio.router, tags=["Audio Processing"])
+    app.include_router(evaluation.router, prefix="/scoring", tags=["GPT Evaluations"])
 
     @app.get("/", response_model=HealthCheckResponse, tags=["Health"])
     async def root():
