@@ -12,7 +12,7 @@ class UserProfile(Base):
     name = Column(String(100), index=True, nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
     sessions = relationship("SessionLog", back_populates="user", cascade="all, delete-orphan")
 
@@ -45,7 +45,7 @@ class SessionLog(Base):
     technical_score = Column(Float, default=0.0)
     confidence_score = Column(Float, default=0.0)
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
     user = relationship("UserProfile", back_populates="sessions")
     answers = relationship("AnswerLog", back_populates="session", cascade="all, delete-orphan")
@@ -82,6 +82,6 @@ class AnswerLog(Base):
     technical_grade = Column(String(10), default="N/A")
     full_feedback = Column(Text, default="")
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
     session = relationship("SessionLog", back_populates="answers")

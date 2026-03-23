@@ -1,6 +1,6 @@
 import logging
 from fastapi import APIRouter, HTTPException
-from passlib.hash import bcrypt
+import bcrypt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends
@@ -25,8 +25,9 @@ async def register_user(req: UserCreateRequest, db: AsyncSession = Depends(get_d
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    # Hash the password
-    hashed = bcrypt.hash(req.password)
+    # Hash the password using direct bcrypt library (standard for modern Python)
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(req.password.encode('utf-8'), salt).decode('utf-8')
 
     user = UserProfile(
         name=req.name,
@@ -56,7 +57,12 @@ async def login_user(req: UserLoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(UserProfile).where(UserProfile.email == req.email))
     user = result.scalars().first()
 
-    if not user or not bcrypt.verify(req.password, user.password_hash):
+    # Verify password using direct bcrypt library
+    is_valid = bcrypt.checkpw(
+        req.password.encode('utf-8'), 
+        user.password_hash.encode('utf-8')
+    )
+    if not user or not is_valid:
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     # Count sessions
