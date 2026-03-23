@@ -12,6 +12,7 @@ from models.schema import (
     StudyPlanResponse,
 )
 from services.llm_service import llm_service
+from services.redis_service import redis_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -27,7 +28,14 @@ async def get_progress(user_id: int, db: AsyncSession = Depends(get_db)):
     - Improvement trends (comparing recent vs older sessions)
     - Identified strengths and weaknesses
     """
-    # Validate user
+    
+    # ⚡ 1. Fast Path: Check Enterprise Redis Cache First ⚡
+    cache_key = f"user_progress:{user_id}"
+    cached_data = await redis_service.get_cache(cache_key)
+    if cached_data:
+        return ProgressResponse(**cached_data)
+
+    # 2. Slow Path: Validate user and query PostgreSQL
     user_result = await db.execute(select(UserProfile).where(UserProfile.id == user_id))
     user = user_result.scalars().first()
     if not user:
@@ -76,7 +84,7 @@ async def get_progress(user_id: int, db: AsyncSession = Depends(get_db)):
 
     logger.info(f"Progress fetched for user {user_id}: {len(sessions)} sessions")
 
-    return ProgressResponse(
+    response = ProgressResponse(
         user_id=user_id,
         total_sessions=len(sessions),
         sessions=session_summaries,
@@ -84,6 +92,11 @@ async def get_progress(user_id: int, db: AsyncSession = Depends(get_db)):
         strengths=strengths,
         weaknesses=weaknesses,
     )
+    
+    # 💾 3. Store result in Redis Cache for 5 minutes (300 seconds) 💾
+    await redis_service.set_cache(cache_key, response.model_dump(mode="json"), expire_seconds=300)
+
+    return response
 
 
 @router.post("/study-plan", response_model=StudyPlanResponse)

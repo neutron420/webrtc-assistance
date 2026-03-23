@@ -1,12 +1,16 @@
 import logging
 from contextlib import asynccontextmanager
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+load_dotenv()
 
 from routes import audio, evaluation, session, user, progress, seed
 from models.schema import HealthCheckResponse
 from models.database import engine
 from models.domain import Base
+from services.redis_service import redis_service
 
 # ──────────────────────────────────────────────
 # Configure logging for debugging
@@ -30,10 +34,14 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
     logger.info("✅ Database ready!")
     
+    # Initialize Enterprise Redis
+    await redis_service.connect()
+    
     yield  # App runs here
     
     # Shutdown: cleanup
     logger.info("🛑 Shutting down application...")
+    await redis_service.close()
     await engine.dispose()
 
 

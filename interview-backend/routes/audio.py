@@ -6,6 +6,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, WebSocket, WebSo
 from models.schema import TranscriptionResponse
 from services.whisper_service import WhisperService
 from services.analytics_service import analytics_service
+from services.redis_service import redis_service
 
 logger = logging.getLogger(__name__)
 
@@ -121,13 +122,19 @@ async def audio_stream_websocket(websocket: WebSocket):
                     eye_contact_score=eye_contact,
                 )
 
-                # Send feedback back to client
-                await websocket.send_json({
+                feedback_payload = {
                     "type": "feedback",
                     "cues": cues,
                     "filler_words_detected": chunk_fillers,
                     "current_wpm": wpm,
-                })
+                }
+
+                # FAST-PATH: Send directly back to connected user
+                await websocket.send_json(feedback_payload)
+                
+                # SCALE-PATH: Publish to Redis Pub/Sub for cross-server observability
+                session_id = data.get("session_id", "unknown_session")
+                await redis_service.publish(f"live_stream_metrics:{session_id}", feedback_payload)
 
             elif msg_type == "audio_chunk":
                 # Future: handle raw audio bytes for streaming transcription
@@ -135,6 +142,25 @@ async def audio_stream_websocket(websocket: WebSocket):
                 await websocket.send_json({
                     "type": "ack",
                     "message": "Audio chunk received",
+                })
+
+            # ──────────────────────────────────────────────
+            # WebRTC Signaling Support (Offer/Answer/ICE)
+            # ──────────────────────────────────────────────
+            elif msg_type in ["offer", "answer", "ice_candidate"]:
+                session_id = data.get("session_id", "unknown_session")
+                logger.info(f"WebRTC Signaling ({msg_type}) for session {session_id}")
+                
+                # Broadcast signaling data via Redis Pub/Sub so other components 
+                # (like a recording service or another peers) can see it
+                await redis_service.publish(f"webrtc_signaling:{session_id}", data)
+                
+                # For a basic bot, we acknowledge receipt. 
+                # In P2P, we would forward this to the other participant.
+                await websocket.send_json({
+                    "type": "signaling_ack",
+                    "msg_type": msg_type,
+                    "status": "received"
                 })
 
             elif msg_type == "end_session":

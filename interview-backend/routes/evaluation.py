@@ -14,6 +14,7 @@ from models.schema import (
 )
 from services.llm_service import llm_service
 from services.analytics_service import analytics_service
+from services.redis_service import redis_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -190,6 +191,10 @@ async def finalize_session(session_id: int, db: AsyncSession = Depends(get_db)):
     ]
 
     logger.info(f"Session {session_id} finalized with grade: {overall['overall_grade']}")
+    
+    # 🧹 Invalidate Cache: 
+    # The user's dashboard must be updated instantly instead of waiting 5 mins!
+    await redis_service.invalidate_cache(f"user_progress:{session.user_id}")
 
     return FullScorecardResponse(
         session_id=session_id,
