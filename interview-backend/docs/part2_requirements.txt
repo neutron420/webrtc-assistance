@@ -1,0 +1,84 @@
+Repository
+Description
+samreen-ui/College-Chatbot-RAG-
+VIDYA -- Smart Campus Assistant using RAG with FAISS and
+Sentence Transformers. Floating chatbot UI integrated into college
+website.
+CC-KEH/AR-Indoor-Navigation
+Flutter + Unity AR indoor navigation app with Firebase backend.
+SohaibBazaz/RAG-Based-
+University-Assistant-Chatbot
+University Q&A chatbot using Google Gemini API + RAG over PDFs.
+Key Papers & Resources
+MDPI Applied Sciences 2021 -- "An ARCore-Based Augmented Reality Campus Navigation System"
+(visual inertial ranging, real-time locating)
+MDPI Electronics 2025 -- "Markerless AR Navigation for Smart Campuses" (CNN-based signage
+detection, Floyd-Warshall routing)
+Methodology
+1. Campus Knowledge Base (RAG) -- Digitize all campus info (departments, faculty, events, policies,
+menus). Chunk, embed (all-MiniLM-L6-v2), store in FAISS/ChromaDB.
+2. Chatbot Engine -- Flutter cross-platform app. Whisper for voice. RAG pipeline: embed query, retrieve,
+generate via GPT-4o.
+3. Outdoor Navigation -- Google Maps SDK. Geocode all buildings, landmarks, parking, bus stops.
+4. Indoor Navigation -- Graph-based indoor maps (nodes = waypoints, edges = paths). BLE beacons or
+WiFi fingerprinting for positioning. A* pathfinding.
+5. AR Overlay -- ARCore/ARKit for spatial awareness. Render 3D arrows and POI markers on camera feed.
+Update every 200ms.
+6. Real-Time Data -- Campus APIs for live class schedules, events, bus tracker, cafeteria menu. Push
+notifications.
+Project 14: Interview Preparation Chatbot with Real-Time Feedback
+Problem Statement Students preparing for technical interviews lack personalized, real-time feedback on their
+performance. Build an AI interview coach that conducts mock interviews (technical + behavioral), provides
+real-time feedback on: answer quality, communication clarity, body language (via camera), filler word usage,
+and adapts difficulty based on performance.
+Expected Output
+Video call interface with AI interviewer (avatar/voice)
+Technical interview: DSA, system design, ML questions with follow-ups
+Real-time feedback: filler word counter, speaking pace, eye contact score
+Post-interview detailed scorecard: technical accuracy, communication, confidence
+Personalized study plan based on identified weak areas
+Progress tracking across multiple sessions
+Company-specific interview prep (FAANG, startups, etc.)
+Tech Stack: WebRTC for video, Whisper for transcription, MediaPipe for body language analysis, GPT-4o for
+question generation and evaluation, React, TensorFlow.js, PostgreSQL
+Reference Implementations
+Repository
+Description
+IliaLarchenko/Interviewer
+AI Mock Interviewer with GPT-4o, Whisper STT, TTS-1.
+Speech-first interface. Coding, ML, system design, behavioral
+interviews. Also on HuggingFace Spaces.
+niyas6161/Interview-Confidence-Level-
+Detection
+OpenCV + MediaPipe confidence detection. Analyzes eye
+contact, smiling, nodding, facial expressions.
+ThisIs-Developer/Body-Language-
+Detection-with-MediaPipe-and-OpenCV
+Real-time body language detection for gestures, postures,
+facial expressions.
+Key Papers & Resources
+SCITEPRESS 2025 -- "Body Language and Speech Analysis Using Deep Learning for Interview
+Assessment" (pose estimation, CNNs, BERT for 360-degree assessment)
+LearnOpenCV -- Building a Body Posture Analysis System Using MediaPipe
+Methodology
+1. Session Setup -- User selects interview type, role, difficulty. GPT-4o generates role-appropriate
+questions.
+2. Audio Pipeline (WebRTC + Whisper) -- Real-time audio streaming. VAD for speech segmentation.
+Detect filler words via pattern matching on Whisper transcripts with word-level timestamps (WhisperX).
+Track: WPM, pause duration, filler frequency.
+3. Body Language (MediaPipe) -- MediaPipe Holistic (face mesh + pose + hands) per frame. Eye contact
+via iris position relative to eye corners. Posture via shoulder alignment. Facial expressions via landmark
+distances.
+4. Answer Quality Assessment -- Whisper transcript + question sent to GPT-4o. Evaluate: relevance,
+completeness, structure (STAR method), technical accuracy. Score 1-10 per dimension.
+5. Real-Time Feedback Engine -- During: subtle on-screen cues ("Slow down", "Make eye contact"). After
+each answer: brief assessment. After interview: comprehensive scorecard.
+6. Progress Tracking -- Record sessions. Track improvement: filler word reduction, confidence trends,
+answer quality.
+Project 15: Agricultural Advisory Chatbot for Farmers
+Problem Statement Small-scale farmers in developing countries lack access to timely, localized agricultural
+advice. Build a chatbot accessible via WhatsApp/SMS that provides: crop disease diagnosis from photos,
+weather-based planting recommendations, market price information, government scheme eligibility, and pest
+management advice -- all in local languages.
+Expected Output
+WhatsApp chatbot farmers can use by sending text or crop photos
