@@ -1,0 +1,10 @@
+{
+    "python.analysis.extraPaths": [
+        "./interview-backend",
+        "C:/Users/R.K Singh/AppData/Roaming/Python/Python312/site-packages"
+    ],
+    "python.autoComplete.extraPaths": [
+        "./interview-backend",
+        "C:/Users/R.K Singh/AppData/Roaming/Python/Python312/site-packages"
+    ]
+}
