@@ -171,7 +171,6 @@ async def finalize_session(session_id: int, db: AsyncSession = Depends(get_db)):
     session.communication_score = overall["communication_score"]
     session.technical_score = overall["technical_score"]
     session.confidence_score = overall["confidence_score"]
-    await db.commit()
 
     # Build individual answer scorecards
     answer_scorecards = [
@@ -195,6 +194,7 @@ async def finalize_session(session_id: int, db: AsyncSession = Depends(get_db)):
     # 🧹 Invalidate Cache: 
     # The user's dashboard must be updated instantly instead of waiting 5 mins!
     await redis_service.invalidate_cache(f"user_progress:{session.user_id}")
+    await db.commit()
 
     return FullScorecardResponse(
         session_id=session_id,
