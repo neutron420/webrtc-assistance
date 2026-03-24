@@ -44,6 +44,8 @@ class SessionLog(Base):
     communication_score = Column(Float, default=0.0)
     technical_score = Column(Float, default=0.0)
     confidence_score = Column(Float, default=0.0)
+    
+    is_finalized = Column(Integer, default=0) # 0 = active, 1 = finalized
 
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
