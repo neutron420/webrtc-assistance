@@ -36,19 +36,22 @@ async def upload_audio(file: UploadFile = File(...)):
 
         logger.info(f"File saved temporarily at {file_location}")
 
-        # 1. Transcribe using Whisper
-        transcription_text = await whisper_service.transcribe_audio(file_location)
+        # 1. Transcribe using Whisper (returns {text, duration})
+        whisper_result = await whisper_service.transcribe_audio(file_location)
+        transcription_text = whisper_result.get("text", "")
+        audio_duration = whisper_result.get("duration", None)
 
         # 2. Detect filler words in the transcript
         filler_counts = analytics_service.detect_filler_words(transcription_text)
         filler_total = analytics_service.get_filler_word_total(filler_counts)
 
-        # 3. Calculate WPM (using estimated duration if not available)
-        wpm = analytics_service.calculate_wpm(transcription_text, duration_seconds=None)
+        # 3. Calculate WPM using REAL audio duration from Whisper
+        wpm = analytics_service.calculate_wpm(transcription_text, duration_seconds=audio_duration)
 
         return TranscriptionResponse(
             text=transcription_text,
             filename=file.filename,
+            duration=audio_duration,
             wpm=wpm,
             filler_words=filler_counts,
             filler_word_count=filler_total,

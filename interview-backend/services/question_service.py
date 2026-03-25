@@ -3,261 +3,741 @@ import asyncio
 from typing import List
 
 logger = logging.getLogger(__name__)
-
-# ──────────────────────────────────────────────
-# Company-specific question banks
-# ──────────────────────────────────────────────
-
 COMPANY_QUESTION_BANKS = {
     "google": {
-        "behavioral": [
-            "Tell me about a time you had to deal with ambiguity on a project.",
-            "Describe a situation where you had to influence without authority.",
-            "How do you handle disagreements with teammates on technical decisions?",
-            "Tell me about a time you failed and what you learned from it.",
-            "Describe your most impactful project and why it mattered.",
-        ],
-        "technical_dsa": [
-            "Design an algorithm to find the shortest path in a weighted graph.",
-            "How would you implement an LRU cache? Walk me through the data structures.",
-            "Given a stream of integers, find the median at any point in time.",
-            "Explain how you would detect a cycle in a linked list and why it works.",
-            "Design a solution for the word ladder problem. What's the time complexity?",
-        ],
-        "system_design": [
-            "Design Google Search — how would you architect the crawling, indexing, and ranking?",
-            "Design YouTube — focus on video upload, transcoding, and serving at scale.",
-            "Design Google Maps — how would you handle real-time routing for millions of users?",
-            "Design a distributed task scheduling system like Google Cloud Tasks.",
-            "Design Gmail — focus on inbox storage, search, and spam filtering.",
-        ],
-        "ml_ai": [
-            "How would you build a spam detection model for Gmail?",
-            "Design a recommendation system for YouTube videos.",
-            "How would you evaluate and improve a search ranking model?",
-            "Explain the transformer architecture and why it replaced RNNs.",
-            "How would you handle class imbalance in a fraud detection model?",
-        ],
+        "behavioral": {
+            "easy": [
+                "Tell me about yourself.",
+                "Why Google?",
+                "Tell me about a project you're proud of.",
+                "What does your ideal work environment look like?",
+                "Describe a time you helped a teammate.",
+                "What motivates you in your work?",
+                "Tell me about a time you learned something quickly.",
+                "How do you prioritize your tasks?",
+            ],
+            "medium": [
+                "Tell me about a time you dealt with ambiguity.",
+                "Disagreement with a teammate?",
+                "Influence without authority?",
+                "Describe a time you had to change your approach mid-project.",
+                "Tell me about a time you had to give tough feedback.",
+                "How have you handled a situation where requirements kept changing?",
+                "Describe a cross-functional project you worked on.",
+                "Tell me about a time you advocated for the user.",
+                "How do you handle being wrong in front of peers?",
+                "Describe a time you had to make a decision with incomplete data.",
+            ],
+            "hard": [
+                "Most difficult technical challenge you've faced?",
+                "Tell me about a major failure.",
+                "Handling conflicting priorities from multiple stakeholders.",
+                "Tell me about a time you changed the direction of a project significantly.",
+                "Describe a situation where you had to push back on leadership.",
+                "Tell me about a time you drove a cultural or process change.",
+                "Describe a time you had to balance short-term wins vs. long-term vision.",
+                "Tell me about the most ambiguous problem you've ever solved.",
+            ]
+        },
+        "technical_dsa": {
+            "easy": [
+                "Reverse a linked list.",
+                "Valid Palindrome.",
+                "Binary Search implementation.",
+                "Find duplicates in an array.",
+                "Check if two strings are anagrams.",
+                "Find the maximum element in a stack.",
+                "Implement a queue using two stacks.",
+                "Count vowels in a string.",
+                "Find the intersection of two arrays.",
+                "Check balanced parentheses.",
+            ],
+            "medium": [
+                "LRU Cache.",
+                "Course Schedule (Topological Sort).",
+                "Median from Data Stream.",
+                "Longest Substring Without Repeating Characters.",
+                "Kth Largest Element in an Array.",
+                "Binary Tree Level Order Traversal.",
+                "3Sum problem.",
+                "Product of Array Except Self.",
+                "Jump Game.",
+                "Clone Graph.",
+                "Subarray Sum Equals K.",
+                "Decode Ways.",
+            ],
+            "hard": [
+                "Design a search autocomplete system.",
+                "Largest Rectangle in Histogram.",
+                "Trapping Rain Water.",
+                "Word Ladder II.",
+                "Serialize and Deserialize Binary Tree.",
+                "Sliding Window Maximum.",
+                "Minimum Window Substring.",
+                "Regular Expression Matching.",
+                "Alien Dictionary.",
+                "Critical Connections in a Network.",
+            ]
+        },
+        "system_design": {
+            "easy": [
+                "Design a URL shortener.",
+                "Design a rate limiter.",
+                "Simple load balancer.",
+                "Design a key-value store.",
+                "Design a job scheduler.",
+                "Design a simple cache system.",
+            ],
+            "medium": [
+                "Design Google Search.",
+                "Design YouTube video serving.",
+                "Design Google Drive.",
+                "Design a notification service.",
+                "Design a leaderboard system.",
+                "Design Google Calendar.",
+                "Design a distributed logging system.",
+                "Design a ride-sharing service.",
+            ],
+            "hard": [
+                "Design a distributed web crawler.",
+                "Design Google Maps real-time routing.",
+                "Design Spanner-like globally distributed database.",
+                "Design a real-time collaborative document editor (Google Docs).",
+                "Design a globally consistent ad serving system.",
+                "Design a streaming data pipeline at petabyte scale.",
+            ]
+        }
     },
-    "amazon": {
-        "behavioral": [
-            "Tell me about a time you went above and beyond for a customer. (Customer Obsession)",
-            "Describe a situation where you had to make a decision with incomplete data. (Bias for Action)",
-            "Tell me about a time you simplified a complex process. (Invent and Simplify)",
-            "Give an example of when you raised the hiring bar. (Hire and Develop the Best)",
-            "Describe a time when you disagreed with your manager and how you handled it. (Have Backbone)",
-        ],
-        "technical_dsa": [
-            "Design an autocomplete system for Amazon's search bar.",
-            "How would you find the top K most frequently ordered products?",
-            "Implement a system to detect duplicate product listings.",
-            "Design an algorithm for optimizing warehouse package routing.",
-            "How would you implement a rate limiter for an API?",
-        ],
-        "system_design": [
-            "Design Amazon's product recommendation engine.",
-            "Design a delivery tracking system like Amazon Logistics.",
-            "Design the Amazon shopping cart — handling millions of concurrent users.",
-            "Design a real-time inventory management system.",
-            "Design Amazon Prime Video streaming architecture.",
-        ],
-        "ml_ai": [
-            "How would you build a product recommendation system using collaborative filtering?",
-            "Design a model to predict delivery times for Amazon shipments.",
-            "How would you detect fake reviews on Amazon?",
-            "Build a demand forecasting model for warehouse inventory.",
-            "How would you personalize the Amazon homepage for each user?",
-        ],
-    },
+
     "meta": {
-        "behavioral": [
-            "Tell me about a time you had to move fast on a project with tight deadlines.",
-            "Describe a time you built something that had significant social impact.",
-            "How do you balance building new features vs. maintaining existing ones?",
-            "Tell me about a time you received critical feedback and how you responded.",
-            "Describe a situation where you had to collaborate across multiple teams.",
-        ],
-        "technical_dsa": [
-            "Design an algorithm to find mutual friends between two users.",
-            "How would you implement a news feed ranking algorithm?",
-            "Given a social graph, find the shortest connection between two people.",
-            "Implement an efficient content deduplication system.",
-            "Design a real-time notifications aggregation system.",
-        ],
-        "system_design": [
-            "Design Facebook News Feed — ranking, caching, and real-time updates.",
-            "Design Instagram Stories — upload, storage, and ephemeral content.",
-            "Design Facebook Messenger — real-time messaging at scale.",
-            "Design a content moderation system for harmful content detection.",
-            "Design WhatsApp — end-to-end encryption and message delivery.",
-        ],
-        "ml_ai": [
-            "How would you build a content moderation classifier for harmful posts?",
-            "Design a deepfake detection system for uploaded videos.",
-            "How would you improve ad targeting while respecting privacy?",
-            "Build a model to detect coordinated inauthentic behavior on the platform.",
-            "How would you rank posts in the News Feed using ML?",
-        ],
+        "behavioral": {
+            "easy": [
+                "Why Meta?",
+                "Tell me about a time you moved fast.",
+                "What does 'move fast and break things' mean to you?",
+                "Describe a product you love and why.",
+                "Tell me about your favorite project.",
+                "How do you stay current with technology?",
+            ],
+            "medium": [
+                "Conflict with a teammate?",
+                "Handling critical feedback?",
+                "Data-driven decision making?",
+                "Tell me about a time you improved a process.",
+                "Describe a time you shipped something imperfect but valuable.",
+                "How do you decide what to build vs. what to cut?",
+                "Tell me about a time you worked with design and PM closely.",
+                "Describe a time you had to learn a new tech stack fast.",
+            ],
+            "hard": [
+                "Most complex project with multiple teams?",
+                "Failure in a high-stakes release.",
+                "Tell me about a time you challenged the status quo.",
+                "Describe a time you had to sunset a feature you built.",
+                "Tell me about a project where the technical and business goals were misaligned.",
+                "How have you driven alignment across teams with different priorities?",
+            ]
+        },
+        "technical_dsa": {
+            "easy": [
+                "K-th Nearest Point.",
+                "Valid Word Abbreviation.",
+                "Find the second largest element.",
+                "Check if a number is a power of two.",
+                "Merge two sorted arrays.",
+                "Reverse words in a string.",
+            ],
+            "medium": [
+                "Minimum Remove to Make Valid Parentheses.",
+                "Binary Tree Vertical Order Traversal.",
+                "Accounts Merge (Union-Find).",
+                "Random Pick with Weight.",
+                "Subarray Sum Divisible by K.",
+                "Dot Product of Sparse Vectors.",
+                "Simplify Path.",
+                "Interval List Intersections.",
+            ],
+            "hard": [
+                "Design a News Feed with ranking.",
+                "Find All Anagrams (Optimized).",
+                "Employee Free Time.",
+                "Minimum Cost to Connect All Points.",
+                "Largest Component Size by Common Factor.",
+                "Longest Consecutive Sequence in O(n).",
+            ]
+        },
+        "system_design": {
+            "easy": [
+                "Design Instagram Likes.",
+                "Design a status update service.",
+                "Design a simple friend recommendation system.",
+                "Design a basic photo storage service.",
+            ],
+            "medium": [
+                "Design Facebook News Feed.",
+                "Design WhatsApp (Real-time).",
+                "Design Facebook Messenger.",
+                "Design Instagram Stories.",
+                "Design a live video streaming service.",
+                "Design a social graph service.",
+            ],
+            "hard": [
+                "Design a globally distributed graph database like TAO.",
+                "Design a privacy-compliant ad targeting system.",
+                "Design a real-time analytics platform for billions of events.",
+                "Design a distributed content moderation system.",
+            ]
+        }
     },
+
     "apple": {
-        "behavioral": [
-            "Tell me about a product you built that you're most proud of.",
-            "Describe a time you obsessed over the details of a user experience.",
-            "How do you balance innovation with maintaining user privacy?",
-            "Tell me about a project where you had to say no to features.",
-            "Describe your approach to quality and craftsmanship in software.",
-        ],
-        "technical_dsa": [
-            "How would you efficiently compress and decompress audio data?",
-            "Design a gesture recognition algorithm for touch interfaces.",
-            "Implement an efficient text search for a large document store.",
-            "How would you build a spell-checker that runs offline on a device?",
-            "Design an algorithm for real-time speech-to-text on mobile.",
-        ],
-        "system_design": [
-            "Design iCloud — syncing user data across all Apple devices.",
-            "Design the App Store — handling app submissions, reviews, and downloads.",
-            "Design Siri — voice recognition, NLU, and response generation.",
-            "Design Apple Pay — secure transactions and tokenization.",
-            "Design Find My — real-time device tracking with privacy.",
-        ],
-        "ml_ai": [
-            "How would you build a face recognition model that runs on-device?",
-            "Design a predictive text model for the iOS keyboard.",
-            "How would you improve Siri's understanding of user intent?",
-            "Build a model to detect and classify emojis from handwriting.",
-            "How would you personalize Apple Music recommendations on-device?",
-        ],
+        "behavioral": {
+            "easy": [
+                "Why Apple?",
+                "Describe your favorite Apple product.",
+                "What does attention to detail mean to you?",
+                "Tell me about a time you improved a user experience.",
+                "Describe a project where you cared deeply about quality.",
+            ],
+            "medium": [
+                "Obsession over UX example?",
+                "Simplicity vs. Functionality tradeoff?",
+                "Tell me about a time you advocated for accessibility.",
+                "Describe a time you worked under strict confidentiality.",
+                "How do you balance perfection with shipping?",
+                "Tell me about a time you simplified a complex system.",
+            ],
+            "hard": [
+                "Quality vs. Deadline conflict?",
+                "Handling secrecy and privacy in development.",
+                "Tell me about a time you pushed through significant technical debt.",
+                "Describe a cross-platform challenge you solved.",
+                "Tell me about the most elegant solution you've designed.",
+            ]
+        },
+        "technical_dsa": {
+            "easy": [
+                "Reverse Words in a String.",
+                "Move Zeroes.",
+                "Find missing number in an array.",
+                "Check if string is a rotation of another.",
+                "Count occurrences of a character.",
+            ],
+            "medium": [
+                "Design a Spell Checker.",
+                "Compress Audio Data (Lossless).",
+                "Sliding Window Maximum.",
+                "Implement autocomplete with a Trie.",
+                "Find duplicate files in a directory tree.",
+                "Serialize a binary tree to string.",
+            ],
+            "hard": [
+                "Design a multi-device sync algorithm (iCloud).",
+                "Real-time gesture recognition logic.",
+                "Design a conflict resolution strategy for distributed file sync.",
+                "Implement offline-first data sync with eventual consistency.",
+                "Design a delta compression algorithm for large files.",
+            ]
+        }
     },
-    "netflix": {
-        "behavioral": [
-            "Tell me about a time you made a bold decision that others disagreed with.",
-            "Describe how you've demonstrated 'Freedom and Responsibility' in your career.",
-            "How do you handle situations where there's no established process?",
-            "Tell me about a time you gave difficult but honest feedback to a colleague.",
-            "Describe a time you dramatically improved the performance of a system.",
-        ],
-        "technical_dsa": [
-            "How would you build a video similarity detection system?",
-            "Design an algorithm to optimize content delivery based on user bandwidth.",
-            "Implement an efficient A/B testing framework.",
-            "How would you handle personalized thumbnail selection at scale?",
-            "Design a content fingerprinting system for copyright detection.",
-        ],
-        "system_design": [
-            "Design Netflix — video streaming, CDN, and adaptive bitrate.",
-            "Design a real-time A/B testing platform for UI experiments.",
-            "Design a content recommendation system that handles cold-start users.",
-            "Design a global content delivery network for 4K streaming.",
-            "Design the Netflix download-for-offline feature.",
-        ],
-        "ml_ai": [
-            "How would you build Netflix's recommendation algorithm?",
-            "Design a system for personalized thumbnail selection using ML.",
-            "How would you predict which shows will be popular before release?",
-            "Build a model to detect and classify video quality issues.",
-            "How would you optimize content encoding using perceptual quality metrics?",
-        ],
+
+    "stripe": {
+        "behavioral": {
+            "easy": [
+                "Why Stripe?",
+                "What's a well-designed API you use?",
+                "What does developer experience mean to you?",
+                "Tell me about a time you wrote great documentation.",
+                "Describe a time you made something simpler for users.",
+            ],
+            "medium": [
+                "When did you have to think like a user?",
+                "Correctness vs. Speed dilemma.",
+                "How do you approach debugging a system you've never seen before?",
+                "Tell me about a time you improved reliability.",
+                "Describe your process for reviewing someone else's code.",
+                "Tell me about working in a high-stakes financial system.",
+            ],
+            "hard": [
+                "Most difficult technical bug you solved.",
+                "Handling a major outage.",
+                "Tell me about a time you had to redesign a core service.",
+                "Describe a time you prevented data loss or corruption.",
+                "How have you handled a systemic failure that affected customers?",
+            ]
+        },
+        "technical_dsa": {
+            "easy": [
+                "Verify a JSON payload signature.",
+                "Currency Converter.",
+                "Validate a credit card number (Luhn algorithm).",
+                "Parse and format a date string.",
+                "Detect circular dependencies in a list.",
+            ],
+            "medium": [
+                "Design a Ledger system for transactions.",
+                "Idempotency key implementation.",
+                "API Rate Limiter.",
+                "Design a retry mechanism with exponential backoff.",
+                "Implement a simple reconciliation engine.",
+                "Build a transactional key-value store.",
+                "Detect fraudulent transactions from a stream.",
+            ],
+            "hard": [
+                "Design a globally consistent payment processing queue.",
+                "Handling double-spend in distributed systems.",
+                "Design a fault-tolerant event sourcing system for payments.",
+                "Implement exactly-once delivery semantics.",
+                "Design a multi-currency settlement system.",
+            ]
+        }
     },
+
+    "airbnb": {
+        "behavioral": {
+            "easy": [
+                "Why Airbnb?",
+                "Tell me about a time you were a guest/host.",
+                "What does belonging mean to you?",
+                "Tell me about a time you built trust with someone.",
+                "Describe a project you worked on with impact.",
+            ],
+            "medium": [
+                "Collaborative project experience.",
+                "Handling a bias in a team.",
+                "Tell me about a time you had to make a product tradeoff.",
+                "Describe a time you improved the onboarding experience.",
+                "How have you used data to change a product direction?",
+                "Tell me about working on a marketplace product.",
+            ],
+            "hard": [
+                "Strategic decision that failed.",
+                "Tell me about a time you resolved a trust issue between two parties.",
+                "Describe a time you had to ship under extreme pressure.",
+                "How have you handled a community-facing incident?",
+            ]
+        },
+        "technical_dsa": {
+            "easy": [
+                "Check if two strings are shifted.",
+                "Flatten a nested list.",
+                "Find overlapping intervals.",
+                "Implement a basic search filter.",
+                "Count distinct elements in a list.",
+            ],
+            "medium": [
+                "Design a Booking Calendar.",
+                "Pagination for search results.",
+                "IP to Location lookup.",
+                "Design a review and rating aggregation system.",
+                "Find all available date ranges from a list of bookings.",
+                "Build a typeahead search with ranking.",
+            ],
+            "hard": [
+                "Design a search engine for vacation rentals with real-time availability.",
+                "Optimizing pricing algorithm updates.",
+                "Design a dynamic pricing engine that responds to demand signals.",
+                "Build a distributed inventory management system.",
+            ]
+        }
+    },
+
+    "amazon": {
+        "behavioral": {
+            "easy": [
+                "Tell me about a time you went above and beyond for a customer.",
+                "Describe your career path.",
+                "Tell me about a project you owned end to end.",
+                "What does Customer Obsession mean to you personally?",
+                "Describe a time you delivered results despite obstacles.",
+            ],
+            "medium": [
+                "Bias for Action example?",
+                "Dive Deep example?",
+                "Ownership example?",
+                "Tell me about a time you invented something.",
+                "Earn Trust — how have you built trust with a skeptical stakeholder?",
+                "Describe a time you used data to change someone's mind.",
+                "Tell me about a time you simplified a complex process.",
+                "Think Big — tell me about a bold idea you proposed.",
+            ],
+            "hard": [
+                "Have Backbone, Disagree and Commit — tell me about it.",
+                "Are Right, A Lot — tell me about a time you were wrong.",
+                "Deliver Results in a situation where the odds were against you.",
+                "Tell me about a time you influenced a decision at a higher level.",
+                "Hire and Develop the Best — how have you grown someone on your team?",
+                "Frugality — tell me about a time you achieved more with less.",
+            ]
+        },
+        "technical_dsa": {
+            "easy": [
+                "Two Sum.",
+                "Merge Sorted Lists.",
+                "Valid Parentheses.",
+                "Reverse a string.",
+                "Find the majority element.",
+                "Count islands (simple grid traversal).",
+                "Check if a linked list has a cycle.",
+            ],
+            "medium": [
+                "Top K Frequent Elements.",
+                "Number of Islands.",
+                "Word Search.",
+                "Reorder List.",
+                "Find All Anagrams in a String.",
+                "Binary Tree Maximum Path Sum.",
+                "Coin Change.",
+                "Partition Equal Subset Sum.",
+                "Search in Rotated Sorted Array.",
+            ],
+            "hard": [
+                "Word Ladder II.",
+                "Sudoku Solver.",
+                "Design Tic-Tac-Toe.",
+                "Trapping Rain Water.",
+                "Minimum Window Substring.",
+                "The Skyline Problem.",
+                "Maximum Profit in Job Scheduling.",
+            ]
+        },
+        "system_design": {
+            "easy": [
+                "Design Amazon's product search.",
+                "Design a shopping cart service.",
+                "Design a simple recommendation engine.",
+            ],
+            "medium": [
+                "Design Amazon's order management system.",
+                "Design a warehouse inventory system.",
+                "Design a flash sale system.",
+                "Design AWS S3 at a high level.",
+            ],
+            "hard": [
+                "Design Amazon's Prime Video streaming service.",
+                "Design a globally distributed e-commerce checkout pipeline.",
+                "Design DynamoDB's partition and replication model.",
+            ]
+        }
+    },
+
+    "uber": {
+        "behavioral": {
+            "easy": [
+                "Why Uber?",
+                "How do you handle stress?",
+                "Tell me about a time you had to work under tight deadlines.",
+                "Describe a time you improved operational efficiency.",
+            ],
+            "medium": [
+                "Tell me about a time you had to fix a critical bug in production.",
+                "Dealing with a difficult client?",
+                "Tell me about a time you worked on a real-time system.",
+                "How do you handle on-call incidents?",
+                "Describe a time you had to coordinate across multiple time zones.",
+            ],
+            "hard": [
+                "How do you handle technical debt vs. shipping speed?",
+                "Tell me about a time you redesigned a high-traffic service.",
+                "Describe a time you led a reliability initiative.",
+                "How have you dealt with cascading failures in a distributed system?",
+            ]
+        },
+        "technical_dsa": {
+            "easy": [
+                "Implement a Stack using Queues.",
+                "Valid Anagram.",
+                "Find shortest path in a simple grid.",
+                "Implement a circular buffer.",
+            ],
+            "medium": [
+                "Design a Hit Counter.",
+                "Group Anagrams.",
+                "Sudoku Validation.",
+                "Task Scheduler.",
+                "Find Peak Element.",
+                "Maximum Points on a Line.",
+                "LFU Cache.",
+            ],
+            "hard": [
+                "Alien Dictionary.",
+                "Longest Path in a Matrix.",
+                "Minimum Number of Refueling Stops.",
+                "Design a real-time trip matching algorithm.",
+                "ETA estimation with dynamic graph weights.",
+            ]
+        },
+        "system_design": {
+            "easy": [
+                "Design a notification system.",
+                "Design a simple chat.",
+                "Design a geolocation lookup service.",
+            ],
+            "medium": [
+                "Design Uber's Dispatcher system.",
+                "Design Uber Eats real-time tracking.",
+                "Design a surge pricing engine.",
+                "Design a driver/rider matching service.",
+            ],
+            "hard": [
+                "Design a high-concurrency payment gateway for millions of rides.",
+                "Design Uber's real-time location tracking at global scale.",
+                "Design a fraud detection system for ride payments.",
+                "Design a distributed ETA prediction pipeline.",
+            ]
+        }
+    },
+
+    "openai": {
+        "behavioral": {
+            "easy": [
+                "What interests you about AGI?",
+                "Tell me about a project.",
+                "What does responsible AI mean to you?",
+                "Describe a time you explained a complex model to a non-technical stakeholder.",
+            ],
+            "medium": [
+                "How do you ensure AI safety in your code?",
+                "Research vs. Engineering balance?",
+                "Tell me about a time you identified unintended model behavior.",
+                "How do you stay current with ML research?",
+                "Describe a time you evaluated a model rigorously.",
+            ],
+            "hard": [
+                "Ethical dilemma you've faced in tech?",
+                "Tell me about a time you challenged a flawed research assumption.",
+                "How have you handled a situation where a model was biased?",
+                "Describe a time you had to balance capability with safety.",
+            ]
+        },
+        "ml_ai": {
+            "easy": [
+                "Explain Bias-Variance tradeoff.",
+                "What is backpropagation?",
+                "What is the difference between supervised and unsupervised learning?",
+                "Explain overfitting and how to prevent it.",
+                "What is gradient descent?",
+                "What is the softmax function?",
+            ],
+            "medium": [
+                "Explain the Transformer architecture.",
+                "How would you reduce LLM hallucination?",
+                "RLHF explanation.",
+                "What is attention mechanism and why does it work?",
+                "How does beam search differ from greedy decoding?",
+                "What are embeddings and how are they trained?",
+                "Explain LoRA fine-tuning.",
+                "How would you detect and mitigate prompt injection?",
+                "What is Constitutional AI?",
+            ],
+            "hard": [
+                "Design a distributed training system for a 175B parameter model.",
+                "Optimizing KV cache for inference speed.",
+                "Design a scalable RLHF pipeline.",
+                "How would you design an eval suite for a general-purpose LLM?",
+                "Explain and implement Flash Attention at a conceptual level.",
+                "How would you handle catastrophic forgetting in continual learning?",
+                "Design a retrieval-augmented generation system for enterprise.",
+            ]
+        }
+    },
+
     "microsoft": {
-        "behavioral": [
-            "Tell me about a time you demonstrated a growth mindset.",
-            "Describe a situation where you drove inclusivity in your team.",
-            "How do you approach learning new technologies outside your comfort zone?",
-            "Tell me about a time you helped a teammate grow professionally.",
-            "Describe a project where you balanced multiple competing priorities.",
-        ],
-        "technical_dsa": [
-            "How would you design an efficient diff algorithm for document comparison?",
-            "Implement a collaborative editing system like real-time co-authoring.",
-            "Design an algorithm for intelligent code completion in an IDE.",
-            "How would you build a distributed file system?",
-            "Implement a query optimizer for a relational database.",
-        ],
-        "system_design": [
-            "Design Microsoft Teams — real-time messaging, video, and file sharing.",
-            "Design OneDrive — file sync, sharing, and conflict resolution.",
-            "Design Azure DevOps — CI/CD pipelines at enterprise scale.",
-            "Design Outlook — email, calendar, and cross-platform sync.",
-            "Design Xbox Live — matchmaking, leaderboards, and real-time gaming.",
-        ],
-        "ml_ai": [
-            "How would you build Copilot's code suggestion engine?",
-            "Design a model for intelligent meeting transcription and summarization.",
-            "How would you detect and prevent account compromise in Azure AD?",
-            "Build a model to predict resource usage for Azure auto-scaling.",
-            "How would you improve search relevance in Bing?",
-        ],
+        "behavioral": {
+            "easy": [
+                "Why Microsoft?",
+                "Tell me about a time you had a big impact.",
+                "Describe a project you're proud of.",
+                "How do you work with people who have different working styles?",
+            ],
+            "medium": [
+                "Tell me about a time you drove a cross-team initiative.",
+                "Growth mindset example.",
+                "Tell me about a time you gave difficult feedback.",
+                "Describe a time you turned a failure into a learning.",
+                "How do you approach mentoring junior engineers?",
+            ],
+            "hard": [
+                "Tell me about a time you made a significant architectural decision.",
+                "Describe a situation where you had to pivot a project midway.",
+                "How have you handled leading through ambiguity?",
+                "Tell me about a time you influenced org-level change.",
+            ]
+        },
+        "technical_dsa": {
+            "easy": [
+                "Implement a linked list.",
+                "Find duplicate elements in an array.",
+                "Check if a string is a palindrome.",
+                "Write BFS and DFS for a graph.",
+            ],
+            "medium": [
+                "Design an in-memory file system.",
+                "Find all paths in a maze.",
+                "Implement a Trie.",
+                "Meeting Rooms II.",
+                "Serialize and Deserialize a Binary Tree.",
+                "Number of Connected Components in an Undirected Graph.",
+            ],
+            "hard": [
+                "Design an autocomplete system.",
+                "Word Break II.",
+                "Bus Routes (BFS on Graphs).",
+                "Maximum Sum Circular Subarray.",
+                "Design a version control diff engine.",
+            ]
+        },
+        "system_design": {
+            "easy": [
+                "Design OneDrive file sync.",
+                "Design a simple email service.",
+            ],
+            "medium": [
+                "Design Microsoft Teams messaging.",
+                "Design Azure Blob Storage.",
+                "Design a collaborative code editing tool (VS Code Live Share).",
+                "Design a distributed CI/CD pipeline.",
+            ],
+            "hard": [
+                "Design Azure's globally distributed identity service.",
+                "Design a real-time co-authoring system for Office 365.",
+                "Design a multi-tenant Kubernetes orchestration platform.",
+            ]
+        }
     },
-    "startup": {
-        "behavioral": [
-            "Tell me about a time you wore multiple hats to get a project done.",
-            "Describe a situation where you had to ship something under extreme time pressure.",
-            "How do you prioritize when everything feels urgent?",
-            "Tell me about a time you built something from scratch with no guidance.",
-            "Describe how you've dealt with changing requirements mid-sprint.",
-        ],
-        "technical_dsa": [
-            "How would you design a scalable notification service from scratch?",
-            "Implement a simple but effective search engine for a small dataset.",
-            "Design a caching strategy for a resource-constrained server.",
-            "How would you build a feature flag system?",
-            "Design an efficient webhook delivery system with retries.",
-        ],
-        "system_design": [
-            "Design a multi-tenant SaaS platform — isolation, billing, and scaling.",
-            "Design a real-time analytics dashboard for a startup's key metrics.",
-            "Design a payment processing pipeline with Stripe integration.",
-            "Design a simple but scalable chat system for a consumer app.",
-            "Design a user authentication system with OAuth, JWT, and MFA.",
-        ],
-        "ml_ai": [
-            "How would you build a churn prediction model with limited data?",
-            "Design a simple recommendation system for a new product with few users.",
-            "How would you implement sentiment analysis for customer support tickets?",
-            "Build a lead scoring model for a B2B SaaS startup.",
-            "How would you use LLMs to automate customer support at a startup?",
-        ],
+
+    "netflix": {
+        "behavioral": {
+            "easy": [
+                "Why Netflix?",
+                "Tell me about a time you took a risk.",
+                "What does radical candor mean to you?",
+                "Describe a time you made a data-driven product decision.",
+            ],
+            "medium": [
+                "Tell me about a time you optimized for long-term over short-term.",
+                "How do you handle low performers on a team?",
+                "Describe a time you had to say no to a stakeholder.",
+                "Tell me about a time you drove a culture change.",
+            ],
+            "hard": [
+                "Tell me about a time you made a controversial technical decision.",
+                "How have you handled a situation where you disagreed with the team's direction?",
+                "Describe a time you operated with extremely high ownership.",
+            ]
+        },
+        "technical_dsa": {
+            "easy": [
+                "Find duplicate movies in a list.",
+                "Implement a simple priority queue.",
+                "Sort a list of user watch times.",
+            ],
+            "medium": [
+                "Design a video buffering algorithm.",
+                "Recommend content based on watch history.",
+                "Consistent Hashing implementation.",
+                "Design a thumbnail CDN key system.",
+            ],
+            "hard": [
+                "Design Netflix's A/B testing framework.",
+                "Design a personalization ranking pipeline.",
+                "Build a chaos engineering framework for microservices.",
+            ]
+        },
+        "system_design": {
+            "easy": [
+                "Design a simple video player.",
+                "Design a watchlist service.",
+            ],
+            "medium": [
+                "Design Netflix's content delivery pipeline.",
+                "Design a personalized home screen.",
+                "Design a real-time view count system.",
+            ],
+            "hard": [
+                "Design Netflix's global video encoding and delivery pipeline.",
+                "Design a real-time recommendation engine at 200M users.",
+                "Design a fault-tolerant streaming microservices architecture.",
+            ]
+        }
     },
+
     "general": {
-        "behavioral": [
-            "Tell me about yourself and your career journey.",
-            "Describe your biggest professional achievement.",
-            "How do you handle conflict with a coworker?",
-            "Tell me about a time a project didn't go as planned.",
-            "Where do you see yourself in 5 years?",
-        ],
-        "technical_dsa": [
-            "Explain the difference between a stack and a queue with real examples.",
-            "How would you reverse a linked list? Walk me through it step by step.",
-            "What is the time complexity of binary search and why?",
-            "How does a hash map work internally?",
-            "Explain BFS vs DFS and when you'd use each.",
-        ],
-        "system_design": [
-            "Design a URL shortener like bit.ly.",
-            "Design a chat application with real-time messaging.",
-            "Design a parking lot management system.",
-            "Design a ride-sharing service like Uber.",
-            "Design a file storage service like Dropbox.",
-        ],
-        "ml_ai": [
-            "Explain the bias-variance tradeoff with a real example.",
-            "What is overfitting and how do you prevent it?",
-            "Explain the difference between supervised and unsupervised learning.",
-            "How does a random forest work and when would you use it?",
-            "What is cross-validation and why is it important?",
-        ],
-    },
+        "behavioral": {
+            "easy": [
+                "Introduce yourself.",
+                "Strengths and weaknesses.",
+                "Why are you looking for a new role?",
+                "Describe your ideal team.",
+                "Tell me about a project you're proud of.",
+                "How do you handle feedback?",
+            ],
+            "medium": [
+                "Conflict resolution example.",
+                "Growth mindset example.",
+                "Tell me about a time you managed competing priorities.",
+                "Describe a time you mentored someone.",
+                "Tell me about a time you failed and what you learned.",
+                "How do you handle working with difficult stakeholders?",
+            ],
+            "hard": [
+                "Critical feedback experience.",
+                "Tell me about the hardest technical decision you've made.",
+                "Describe a time you drove significant organizational change.",
+                "Tell me about a time you had to rebuild trust after a mistake.",
+            ]
+        },
+        "technical_dsa": {
+            "easy": [
+                "FizzBuzz.",
+                "Fibonacci.",
+                "Reverse a string.",
+                "Find min and max in an array.",
+                "Check if a number is prime.",
+                "Count words in a sentence.",
+                "Two Sum.",
+            ],
+            "medium": [
+                "Merge Intervals.",
+                "Rotated Array Search.",
+                "Level Order Traversal.",
+                "Longest Palindromic Substring.",
+                "Validate BST.",
+                "Combination Sum.",
+                "Matrix Spiral Order.",
+            ],
+            "hard": [
+                "N-Queens.",
+                "Edit Distance.",
+                "K-th Smallest Element in Sorted Matrix.",
+                "Word Search II (Trie + Backtracking).",
+                "Longest Increasing Subsequence (O(n log n)).",
+                "Maximum Rectangle in Binary Matrix.",
+            ]
+        },
+        "system_design": {
+            "easy": [
+                "Design a parking lot system.",
+                "Design a vending machine.",
+                "Design a basic task manager.",
+            ],
+            "medium": [
+                "Design a URL shortener.",
+                "Design a Twitter-like feed.",
+                "Design a simple e-commerce cart.",
+                "Design an event-driven notification system.",
+            ],
+            "hard": [
+                "Design a distributed message queue.",
+                "Design a globally consistent key-value store.",
+                "Design a multi-region fault-tolerant microservices platform.",
+            ]
+        }
+    }
 }
 
 
 class QuestionService:
-    """
-    Generates interview questions based on type, role, difficulty, and company.
-    Uses curated question banks + optional GPT-4o generation.
-    """
-
     async def generate_questions(
         self,
         interview_type: str,
@@ -266,49 +746,42 @@ class QuestionService:
         company_target: str,
         num_questions: int = 5,
     ) -> List[str]:
-        """
-        Returns a list of interview questions.
-        
-        First tries the curated question bank for the company/type combo.
-        Falls back to general questions if not found.
-        In production, this would also call GPT-4o to generate 
-        role-specific and difficulty-adjusted questions.
-        """
-        logger.info(
-            f"Generating {num_questions} questions: "
-            f"type={interview_type}, role={role}, "
-            f"difficulty={difficulty}, company={company_target}"
-        )
+        logger.info(f"Generating {num_questions} questions for {company_target} ({difficulty})")
 
-        # Map interview type enum to question bank key
+        # Map types
         type_key = interview_type.replace("technical_", "")
         if interview_type == "technical_dsa":
             type_key = "technical_dsa"
 
-        # Get company-specific questions
-        company_bank = COMPANY_QUESTION_BANKS.get(company_target, COMPANY_QUESTION_BANKS["general"])
-        questions = company_bank.get(interview_type, company_bank.get("behavioral", []))
+        diff_key = difficulty.lower()
 
-        # Limit to requested number
+        # Selection logic
+        bank = COMPANY_QUESTION_BANKS.get(company_target, COMPANY_QUESTION_BANKS["general"])
+        type_data = bank.get(type_key, bank.get("behavioral", {}))
+
+        # Nested difficulty selection with fallback
+        if isinstance(type_data, dict):
+            questions = type_data.get(diff_key, type_data.get("medium", list(type_data.values())[0]))
+        else:
+            questions = type_data  # Fallback if structure is old flat list
+
         selected = questions[:num_questions]
 
-        # If we don't have enough, pad with general questions
+        # Padding if needed
         if len(selected) < num_questions:
             general_bank = COMPANY_QUESTION_BANKS["general"]
-            general_questions = general_bank.get(interview_type, general_bank.get("behavioral", []))
-            for q in general_questions:
+            gen_type_data = general_bank.get(type_key, general_bank.get("behavioral", {}))
+            if isinstance(gen_type_data, dict):
+                gen_qs = gen_type_data.get(diff_key, gen_type_data.get("medium", []))
+            else:
+                gen_qs = gen_type_data
+
+            for q in gen_qs:
                 if len(selected) >= num_questions:
                     break
                 if q not in selected:
                     selected.append(q)
 
-        # ── PLACEHOLDER: In production, call GPT-4o to generate custom questions ──
-        # prompt = f"""Generate {num_questions} {difficulty} {interview_type} interview 
-        #              questions for a {role} position at {company_target}."""
-        # response = await openai_client.chat.completions.create(...)
-        # selected = parse_questions(response)
-
-        logger.info(f"Generated {len(selected)} questions successfully")
         return selected
 
 
