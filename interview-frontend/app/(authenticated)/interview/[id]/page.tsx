@@ -28,7 +28,17 @@ export default function LiveInterviewRoom() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<BlobPart[]>([]);
   const webcamRef = useRef<Webcam>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+
+  const handleCameraReady = () => {
+    setIsCameraActive(true);
+  };
+
+  const handleCameraError = (error: Error) => {
+    setIsCameraActive(false);
+    console.error("Webcam error:", error);
+  };
 
   // MediaPipe State
   const [faceLandmarker, setFaceLandmarker] = useState<FaceLandmarker | null>(null);
@@ -302,7 +312,7 @@ export default function LiveInterviewRoom() {
   };
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-[#09090b]">
+    <div className="flex flex-col h-screen overflow-hidden bg-background">
         {wpmAlert && (
             <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] animate-bounce">
                 <div className="bg-amber-500 text-black px-6 py-3 rounded-full font-bold flex items-center gap-3 shadow-2xl">
@@ -314,7 +324,7 @@ export default function LiveInterviewRoom() {
 
         {eyeContactAlert && (
             <div className="fixed top-36 left-1/2 -translate-x-1/2 z-[60] animate-pulse">
-                <div className="bg-white text-black px-6 py-3 rounded-full font-bold flex items-center gap-3 shadow-2xl border-2 border-[#6ffbbe]">
+                <div className="bg-background text-black px-6 py-3 rounded-full font-bold flex items-center gap-3 shadow-2xl border-2 border-[#6ffbbe]">
                     <Eye size={20} className="text-[#6ffbbe]" />
                     <span>EYE CONTACT: Look at the camera!</span>
                 </div>
@@ -345,49 +355,37 @@ export default function LiveInterviewRoom() {
 
             {/* Left: User Webcam Feed */}
             <section className="flex-1 relative min-h-[400px] flex flex-col">
-                <div className="w-full flex-grow rounded-2xl overflow-hidden bg-[#0e0e10] border border-[#6ffbbe]/20 shadow-2xl relative">
-                    <Webcam audio={false} mirrored={true} ref={webcamRef} className="w-full h-full object-cover" />
-                    <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full object-cover pointer-events-none" />
-                    
-                    <div className="absolute top-4 left-4 flex flex-col gap-2 z-20">
-                        <div className="bg-[#201f22]/70 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 flex items-center gap-2">
-                            {isMediaPipeLoading ? (
-                                <><div className="w-2 h-2 rounded-full bg-[#6ffbbe] animate-spin"></div><span className="text-[10px] text-[#c6c6c6] uppercase tracking-widest">Vision Booting...</span></>
-                            ) : (
-                                <><Eye size={14} className={eyeContactScore > 65 ? "text-[#6ffbbe]" : "text-amber-400"} /><span className="text-xs font-medium text-white">Eye Contact: {eyeContactScore}%</span></>
-                            )}
+                <div className="w-full flex-grow rounded-2xl overflow-hidden bg-foreground/10 border border-border shadow-2xl relative">
+                    <Webcam
+                        audio={false}
+                        mirrored={true}
+                        ref={webcamRef}
+                        className="w-full h-full object-cover"
+                        onUserMedia={handleCameraReady}
+                        // onUserMediaError={handleCameraError}
+                    />
+                    {!isCameraActive && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-center">
+                        <Video className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
+                        <p className="text-muted-foreground text-sm">Camera access required</p>
                         </div>
-                        
-                        {!isMediaPipeLoading && (
-                            <>
-                            <div className="bg-[#201f22]/70 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 flex items-center gap-2">
-                                <Zap size={14} className="text-[#6ffbbe]" />
-                                <span className="text-xs font-medium text-white">Confidence: {confidenceLevel}%</span>
-                            </div>
-                            
-                            <div className="flex gap-2">
-                                {isSmiling && (
-                                    <div className="bg-[#6ffbbe]/20 backdrop-blur-md px-2 py-1 rounded border border-[#6ffbbe]/40 flex items-center gap-1 animate-pulse">
-                                        <Smile size={12} className="text-[#6ffbbe]" />
-                                        <span className="text-[10px] uppercase font-bold text-[#6ffbbe]">Smiling</span>
-                                    </div>
-                                )}
-                                {isNodding && (
-                                    <div className="bg-[#6ffbbe]/20 backdrop-blur-md px-2 py-1 rounded border border-[#6ffbbe]/40 flex items-center gap-1 animate-bounce">
-                                        <ArrowUp size={12} className="text-[#6ffbbe]" />
-                                        <span className="text-[10px] uppercase font-bold text-[#6ffbbe]">Nodding</span>
-                                    </div>
-                                )}
-                            </div>
-                            </>
+                    </div>
+                    )}
+                    
+                    <div className="absolute top-4 left-4 bg-background/70 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 flex items-center gap-2">
+                        {isMediaPipeLoading ? (
+                            <><div className="w-2 h-2 rounded-full bg-primary animate-spin"></div><span className="text-[10px] text-muted-foreground uppercase tracking-widest">Vision Booting...</span></>
+                        ) : (
+                            <><Eye size={14} className={eyeContactScore > 65 ? "text-slate-500" : "text-amber-400"} /><span className="text-xs font-medium text-foreground">Eye Contact: {eyeContactScore}%</span></>
                         )}
                     </div>
                     
-                    <div className="absolute bottom-4 left-4 bg-[#201f22]/70 backdrop-blur-md px-3 py-1.5 rounded-lg border border-[red]/30 flex items-center gap-2 z-20">
+                    <div className="absolute bottom-4 left-4 bg-background/70 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 flex items-center gap-2">
                         {isRecording ? (
-                            <><div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div><span className="text-xs font-semibold text-white">RECORDING...</span></>
+                            <><div className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></div><span className="text-xs font-semibold text-gray-900">RECORDING...</span></>
                         ) : (
-                            <><MicOff size={14} className="text-gray-400"/><span className="text-xs font-semibold text-gray-300">MIC OFF</span></>
+                            <><MicOff size={14} className="text-gray-900"/><span className="text-xs font-semibold text-gray-900">MIC OFF</span></>
                         )}
                     </div>
                 </div>
@@ -395,24 +393,24 @@ export default function LiveInterviewRoom() {
 
             {/* Right: AI Interviewer Panel */}
             <section className="flex-1 flex flex-col gap-6 h-full">
-                <div className="bg-[#1c1b1d] rounded-2xl p-8 border border-[#474747]/30 flex flex-col flex-1 relative overflow-hidden shadow-2xl">
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-[#c6c6c6] mb-4 text-center">Question {currentQuestionIndex + 1} of {questions.length}</span>
+                <div className="bg-card rounded-2xl p-8 border border-border flex flex-col flex-1 relative overflow-hidden shadow-2xl">
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-foreground mb-4 text-center">Question {currentQuestionIndex + 1} of {questions.length}</span>
                     <div className="flex-1 flex flex-col justify-center items-center text-center">
-                        <h2 className="text-2xl md:text-3xl font-light text-white leading-tight max-w-lg mb-8">"{questions[currentQuestionIndex]}"</h2>
+                        <h2 className="text-2xl md:text-3xl text-foreground text-black leading-tight max-w-lg mb-8">"{questions[currentQuestionIndex]}"</h2>
 
                         {isAiProcessing && (
                             <div className="mt-8 flex flex-col items-center animate-pulse">
-                                <span className="text-xs tracking-widest text-[#6ffbbe] uppercase">Evaluating via GPT-4o...</span>
+                                <span className="text-xs tracking-widest text-foreground uppercase">Evaluating via GPT-4o...</span>
                             </div>
                         )}
 
                         {feedback && !feedback.error && (
-                            <div className="mt-6 bg-[#2a2a2c]/50 border border-[#6ffbbe]/30 rounded-xl p-4 w-full text-left animate-in slide-in-from-bottom-5">
-                                <h3 className="text-xs uppercase text-[#6ffbbe] tracking-widest font-bold mb-2 flex items-center gap-2"><CheckCircle2 size={14}/> Feedback Received</h3>
+                            <div className="mt-6 bg-secondary border border-border rounded-xl p-4 w-full text-left animate-in slide-in-from-bottom-5">
+                                <h3 className="text-xs uppercase text-primary tracking-widest font-bold mb-2 flex items-center gap-2"><CheckCircle2 size={14}/> Feedback Received</h3>
                                 <p className="text-sm text-white italic mb-2 leading-relaxed opacity-80 text-center">"{feedback.transcript}"</p>
-                                <div className="h-px w-full bg-[#474747]/30 my-3"></div>
-                                <p className="text-sm text-[#c6c6c6]">{feedback.full_feedback || feedback.star_structure_feedback}</p>
-                                <button onClick={nextQuestion} className="mt-6 w-full py-2 bg-[#6ffbbe] text-black font-bold text-xs uppercase tracking-widest rounded hover:bg-[#6ffbbe]/80 transition-colors">
+                                <div className="h-px w-full bg-border my-3"></div>
+                                <p className="text-sm text-muted-foreground">{feedback.full_feedback || feedback.star_structure_feedback}</p>
+                                <button onClick={nextQuestion} className="mt-6 w-full py-2 bg-foreground text-primary-foreground font-bold text-xs uppercase tracking-widest rounded hover:bg-primary/80 transition-colors">
                                     {currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'Finish Interview'}
                                 </button>
                             </div>
@@ -436,8 +434,8 @@ export default function LiveInterviewRoom() {
                         <Video size={18} /> Finish Answer
                     </button>
                 )}
-                <div className="h-8 w-px bg-[#474747]/50"></div>
-                <button onClick={handleEndInterview} className="px-6 py-2 text-xs font-bold text-[#ffb4ab] uppercase tracking-widest hover:bg-[#ffb4ab]/10 rounded-full transition-colors">
+                <div className="h-8 w-px bg-background/70"></div>
+                <button onClick={handleEndInterview} className="px-6 py-2 w-48 h-12 text-xs font-bold text-red-400 uppercase tracking-widest hover:bg-[#ffb4ab]/10 rounded-full transition-colors">
                     End Interview
                 </button>
             </div>

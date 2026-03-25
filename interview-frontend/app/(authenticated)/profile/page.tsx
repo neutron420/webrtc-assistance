@@ -35,7 +35,7 @@ export default function ProfilePerformance() {
     fetchProgress();
   }, []);
 
-  if (isLoading) return <div className="p-12 text-[#6ffbbe] animate-pulse">Loading Performance Analytics...</div>;
+  if (isLoading) return <div className="p-12 text-primary animate-pulse">Loading Performance Analytics...</div>;
 
   const sessions = data?.sessions || [];
   const latestSession = sessions[sessions.length - 1] || {};
@@ -57,9 +57,9 @@ export default function ProfilePerformance() {
   ];
 
   return (
-    <div className="bg-[#09090b] min-h-screen p-8 text-[#e5e1e4]">
+    <div className="bg-background min-h-screen p-8 text-foreground">
       {/* Header Profile Section */}
-      <header className="flex flex-col md:flex-row items-center justify-between mb-12 gap-6 bg-[#131315]/50 p-8 rounded-3xl border border-white/5">
+      <header className="flex flex-col md:flex-row items-center justify-between mb-12 gap-6 bg-card/50 p-8 rounded-3xl border border-border">
         <div className="flex items-center gap-6">
           <div className="h-24 w-24 rounded-full border-2 border-[#6ffbbe] p-1 overflow-hidden shrink-0">
             <img 
@@ -70,12 +70,12 @@ export default function ProfilePerformance() {
           </div>
           <div>
             <h1 className="text-3xl font-black text-white tracking-tighter">Obsidian Candidate 204</h1>
-            <p className="text-[#c6c6c6] text-sm uppercase tracking-widest font-bold">Frontend Engineer Track • Google Simulation</p>
+            <p className="text-muted-foreground text-sm uppercase tracking-widest font-bold">Frontend Engineer Track • Google Simulation</p>
             <div className="flex gap-4 mt-3">
-               <span className="px-3 py-1 bg-[#6ffbbe]/10 border border-[#6ffbbe]/30 text-[#6ffbbe] text-[10px] rounded-full font-bold uppercase tracking-widest flex items-center gap-2">
+               <span className="px-3 py-1 bg-primary/10 border border-primary/30 text-primary text-[10px] rounded-full font-bold uppercase tracking-widest flex items-center gap-2">
                  <Activity size={12}/> Level 4 Active
                </span>
-               <span className="px-3 py-1 bg-white/5 border border-white/10 text-white text-[10px] rounded-full font-bold uppercase tracking-widest flex items-center gap-2">
+               <span className="px-3 py-1 bg-secondary border border-border text-foreground text-[10px] rounded-full font-bold uppercase tracking-widest flex items-center gap-2">
                  <Clock size={12}/> {sessions.length} Sessions Completed
                </span>
             </div>
@@ -83,12 +83,12 @@ export default function ProfilePerformance() {
         </div>
         <div className="flex gap-4">
            <div className="p-4 bg-[#1c1b1d] rounded-2xl border border-[#2a2a2c] text-center w-28">
-              <span className="text-[10px] text-[#919191] uppercase block mb-1">Avg. Grade</span>
+              <span className="text-[10px] text-muted-foreground uppercase block mb-1">Avg. Grade</span>
               <span className="text-3xl font-black text-white">B+</span>
            </div>
            <div className="p-4 bg-[#1c1b1d] rounded-2xl border border-[#2a2a2c] text-center w-28">
-              <span className="text-[10px] text-[#919191] uppercase block mb-1">Global Rank</span>
-              <span className="text-3xl font-black text-[#6ffbbe]">#42</span>
+              <span className="text-[10px] text-muted-foreground uppercase block mb-1">Global Rank</span>
+              <span className="text-3xl font-black text-primary">#42</span>
            </div>
         </div>
       </header>
@@ -97,7 +97,7 @@ export default function ProfilePerformance() {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         
         {/* Confidence & Technical Trends */}
-        <div className="md:col-span-8 bg-[#1c1b1d] p-8 rounded-3xl border border-[#2a2a2c] relative overflow-hidden">
+        <div className="md:col-span-8 bg-card p-8 rounded-3xl border border-border relative overflow-hidden">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-xl font-bold text-white tracking-tight flex items-center gap-3">
               <TrendingUp className="text-[#6ffbbe]" /> Performance Growth Timeline
