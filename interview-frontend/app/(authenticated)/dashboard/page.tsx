@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { 
   Bell
 } from 'lucide-react';
+import { apiFetch, endpoints } from '@/lib/api-client';
 
 export default function SetupDashboard() {
   const router = useRouter();
@@ -26,11 +27,8 @@ export default function SetupDashboard() {
         if (!user) return;
         
         try {
-            const res = await fetch(`http://localhost:8000/progress/${user.id}`);
-            if (res.ok) {
-                const data = await res.json();
-                setProgressData(data);
-            }
+            const data = await apiFetch(`/progress/${user.id}`);
+            setProgressData(data);
         } catch (err) {
             console.error("Failed to fetch progress", err);
         }
@@ -48,9 +46,8 @@ export default function SetupDashboard() {
         const user = userStr ? JSON.parse(userStr) : null;
         const userId = user?.id || 1;
 
-        const res = await fetch('http://localhost:8000/session/setup', {
+        const data = await apiFetch(endpoints.setupSession, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 user_id: userId,
                 interview_type: formData.interviewType,
@@ -60,9 +57,6 @@ export default function SetupDashboard() {
                 num_questions: 3
             })
         });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Failed to setup session');
 
         localStorage.setItem(`session_${data.session_id}_questions`, JSON.stringify(data.questions));
         localStorage.setItem('active_session_id', data.session_id.toString());

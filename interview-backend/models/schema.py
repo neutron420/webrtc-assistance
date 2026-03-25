@@ -107,6 +107,7 @@ class EyeContactUpdate(BaseModel):
     """Frontend MediaPipe sends these metrics periodically."""
     session_id: int
     eye_contact_score: float = Field(..., ge=0.0, le=100.0)
+    confidence_score: Optional[float] = Field(None, ge=0.0, le=100.0)
     posture_score: Optional[float] = Field(None, ge=0.0, le=100.0)
     facial_expression: Optional[str] = None
 
@@ -124,6 +125,7 @@ class AnswerSubmission(BaseModel):
     wpm: Optional[float] = None
     filler_word_count: Optional[int] = None
     eye_contact_score: Optional[float] = None
+    confidence_score: Optional[float] = None
 
 class ScorecardResponse(BaseModel):
     session_id: int
@@ -136,6 +138,7 @@ class ScorecardResponse(BaseModel):
     wpm: Optional[float] = None
     filler_word_count: Optional[int] = None
     eye_contact_score: Optional[float] = None
+    confidence_level: Optional[float] = None
 
 class FullScorecardResponse(BaseModel):
     session_id: int

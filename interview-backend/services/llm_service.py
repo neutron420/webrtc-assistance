@@ -14,10 +14,15 @@ class LLMService:
     """
 
     def __init__(self):
-        # from openai import AsyncOpenAI
-        # self.client = AsyncOpenAI(api_key="your-api-key")
-        pass
-
+        from openai import AsyncOpenAI
+        import os
+        self.api_key = os.getenv("OPENAI_API_KEY")
+        if self.api_key:
+            self.client = AsyncOpenAI(api_key=self.api_key)
+            logger.info("LLMService initialized with OpenAI API.")
+        else:
+            self.client = None
+            logger.warning("OPENAI_API_KEY not found in LLMService.")
 
     async def evaluate_answer(
         self,
@@ -46,7 +51,7 @@ Also provide:
 - A letter grade (A+, A, A-, B+, B, B-, C+, C, D, F)
 - Specific, constructive feedback mentioning exactly what was good and what was missing.
 
-Respond in JSON format:
+Respond ONLY in JSON format:
 {{
     "relevance_score": 0-10,
     "completeness_score": 0-10,
@@ -57,18 +62,35 @@ Respond in JSON format:
 
         logger.info(f"Evaluating answer for question: {question[:50]}...")
 
-        # ── PLACEHOLDER: Replace with actual OpenAI API call ──
-        # response = await self.client.chat.completions.create(
-        #     model="gpt-4o",
-        #     messages=[
-        #         {"role": "system", "content": "You are an expert interview evaluator."},
-        #         {"role": "user", "content": prompt}
-        #     ],
-        #     response_format={"type": "json_object"}
-        # )
-        # return json.loads(response.choices[0].message.content)
+        if not self.client:
+            logger.warning("No OpenAI client; returning placeholder evaluation.")
+            return {
+                "relevance_score": 5.0,
+                "completeness_score": 5.0,
+                "star_structure_feedback": "Placeholder feedback (API Key missing).",
+                "technical_grade": "B",
+                "full_feedback": "Please provide an OpenAI API key for live evaluation."
+            }
 
-        await asyncio.sleep(1)
+        try:
+            response = await self.client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are an expert interview evaluator. Respond ONLY with valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                response_format={"type": "json_object"}
+            )
+            return json.loads(response.choices[0].message.content)
+        except Exception as e:
+            logger.error(f"Error in evaluate_answer: {str(e)}")
+            return {
+                "relevance_score": 0.0,
+                "completeness_score": 0.0,
+                "star_structure_feedback": "Evaluation failed due to a connection error.",
+                "technical_grade": "N/A",
+                "full_feedback": "We encountered an error analyzing your answer. Please try again."
+            }
 
         # Simulated intelligent response
         word_count = len(transcript.split()) if transcript else 0
