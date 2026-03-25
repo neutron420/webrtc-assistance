@@ -3,6 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch, endpoints } from '@/lib/api-client';
+import { 
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer 
+} from 'recharts';
 
 export default function PostInterviewScorecard({ params }: { params: { id: string } }) {
   const router = useRouter();

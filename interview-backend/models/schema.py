@@ -26,6 +26,10 @@ class CompanyTarget(str, Enum):
     APPLE = "apple"
     NETFLIX = "netflix"
     MICROSOFT = "microsoft"
+    UBER = "uber"
+    STRIPE = "stripe"
+    AIRBNB = "airbnb"
+    OPENAI = "openai"
     STARTUP = "startup"
     GENERAL = "general"
 
