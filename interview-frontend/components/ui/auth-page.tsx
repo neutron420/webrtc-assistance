@@ -60,8 +60,8 @@ export function AuthPage({ mode: initialMode = 'login' }: AuthPageProps) {
 			// In a real app, you'd save a token or session here
 			localStorage.setItem('user', JSON.stringify(data));
 			
-			// Redirect to dashboard or home
-			router.push('/');
+			// Redirect to dashboard
+			router.push('/dashboard');
 		} catch (err: any) {
 			setError(err.message);
 		} finally {

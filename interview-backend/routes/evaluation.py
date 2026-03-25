@@ -38,6 +38,9 @@ async def submit_answer(req: AnswerSubmission, db: AsyncSession = Depends(get_db
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    if session.is_finalized == 1:
+        raise HTTPException(status_code=403, detail="Session is already finalized and locked")
+
     # 1. Analyze the transcript for filler words
     filler_counts = analytics_service.detect_filler_words(req.transcript)
     filler_total = analytics_service.get_filler_word_total(filler_counts)
@@ -116,6 +119,9 @@ async def update_eye_contact(req: EyeContactUpdate, db: AsyncSession = Depends(g
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    if session.is_finalized == 1:
+        raise HTTPException(status_code=403, detail="Session is already finalized and locked")
+
     # Update running average (simple exponential moving average)
     alpha = 0.3  # Weight for new data
     session.avg_eye_contact = round(
@@ -171,7 +177,7 @@ async def finalize_session(session_id: int, db: AsyncSession = Depends(get_db)):
     session.communication_score = overall["communication_score"]
     session.technical_score = overall["technical_score"]
     session.confidence_score = overall["confidence_score"]
-    await db.commit()
+    session.is_finalized = 1 # Mark session as locked
 
     # Build individual answer scorecards
     answer_scorecards = [
@@ -192,19 +198,75 @@ async def finalize_session(session_id: int, db: AsyncSession = Depends(get_db)):
 
     logger.info(f"Session {session_id} finalized with grade: {overall['overall_grade']}")
     
+    # Store session values before commit to avoid expiration error
+    s_id = session.id
+    s_type = session.interview_type
+    s_role = session.role
+    s_company = session.company_target
+    u_id = session.user_id
+
     # 🧹 Invalidate Cache: 
     # The user's dashboard must be updated instantly instead of waiting 5 mins!
-    await redis_service.invalidate_cache(f"user_progress:{session.user_id}")
+    await redis_service.invalidate_cache(f"user_progress:{u_id}")
+    await db.commit()
 
     return FullScorecardResponse(
-        session_id=session_id,
-        interview_type=session.interview_type,
-        role=session.role,
-        company_target=session.company_target,
+        session_id=s_id,
+        interview_type=s_type,
+        role=s_role,
+        company_target=s_company,
         overall_grade=overall["overall_grade"],
         answers=answer_scorecards,
         communication_score=overall["communication_score"],
         confidence_score=overall["confidence_score"],
         technical_score=overall["technical_score"],
         recommendations=overall["recommendations"],
+    )
+
+@router.get("/session/{session_id}", response_model=FullScorecardResponse)
+async def get_scorecard(session_id: int, db: AsyncSession = Depends(get_db)):
+    """
+    Fetches an existing scorecard from the database.
+    """
+    result = await db.execute(select(SessionLog).where(SessionLog.id == session_id))
+    session = result.scalars().first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    if not session.overall_grade:
+        raise HTTPException(status_code=400, detail="Session is not yet finalized")
+
+    # Get all answers
+    answers_result = await db.execute(
+        select(AnswerLog).where(AnswerLog.session_id == session_id).order_by(AnswerLog.question_index)
+    )
+    answers = answers_result.scalars().all()
+
+    answer_scorecards = [
+        ScorecardResponse(
+            session_id=session_id,
+            question_text=a.question_text,
+            relevance_score=a.relevance_score,
+            completeness_score=a.completeness_score,
+            star_structure_feedback=a.star_structure_feedback,
+            technical_grade=a.technical_grade,
+            full_feedback=a.full_feedback,
+            wpm=a.wpm,
+            filler_word_count=a.filler_word_count,
+            eye_contact_score=a.eye_contact_score,
+        )
+        for a in answers
+    ]
+
+    return FullScorecardResponse(
+        session_id=session.id,
+        interview_type=session.interview_type,
+        role=session.role,
+        company_target=session.company_target,
+        overall_grade=session.overall_grade,
+        answers=answer_scorecards,
+        communication_score=session.communication_score or 0.0,
+        confidence_score=session.confidence_score or 0.0,
+        technical_score=session.technical_score or 0.0,
+        recommendations=["Keep working on the STAR method.", "Improve eye contact.", "Reduce filler words."],
     )

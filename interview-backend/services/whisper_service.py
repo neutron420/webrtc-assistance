@@ -1,44 +1,52 @@
 import logging
 import asyncio
-# import whisper  # Uncomment to use local whisper model
-# from openai import AsyncOpenAI # Uncomment to use OpenAI API
+import os
+from openai import AsyncOpenAI
 
 logger = logging.getLogger(__name__)
 
 class WhisperService:
     def __init__(self):
-        # Initialize whisper model or OpenAI client here
-        # self.model = whisper.load_model("base")
-        # self.client = AsyncOpenAI(api_key="your-api-key")
-        pass
+        # Initialize OpenAI client using the environment variable
+        self.api_key = os.getenv("OPENAI_API_KEY")
+        if self.api_key:
+            self.client = AsyncOpenAI(api_key=self.api_key)
+            logger.info("WhisperService initialized with OpenAI API.")
+        else:
+            self.client = None
+            logger.warning("OPENAI_API_KEY not found. Whisper service will use placeholders.")
 
     async def transcribe_audio(self, file_path: str) -> str:
         """
-        Transcribes the given audio file using Whisper.
-        This is an asynchronous function to avoid blocking the main thread.
+        Transcribes the given audio file using OpenAI's Whisper-1 model.
         """
         try:
             logger.info(f"Starting transcription for {file_path}")
             
-            # --- PLACEHOLDER FOR ACTUAL WHISPER TRANSLATION ---
-            # Example using local whisper (runs in thread since it's blocking):
-            # loop = asyncio.get_event_loop()
-            # result = await loop.run_in_executor(None, self.model.transcribe, file_path)
-            # return result["text"]
+            if not self.client:
+                # Fallback placeholder if no API key is provided
+                await asyncio.sleep(0.5)
+                logger.warning("No OpenAI client; returning placeholder text.")
+                return "This is a placeholder transcribed text. Please provide an OPENAI_API_KEY for real transcription."
 
-            # Example using OpenAI API:
-            # with open(file_path, "rb") as audio_file:
-            #     transcript = await self.client.audio.transcriptions.create(
-            #         model="whisper-1", 
-            #         file=audio_file
-            #     )
-            # return transcript.text
-
-            # Simulated delay for placeholder
-            await asyncio.sleep(1)
+            # Perform transcription using the OpenAI API
+            with open(file_path, "rb") as audio_file:
+                transcript = await self.client.audio.transcriptions.create(
+                    model="whisper-1", 
+                    file=audio_file
+                )
             
+            text = (transcript.text or "").strip()
+            
+            # Basic hallucination filter for Whisper (often returns these for silence/noise)
+            hallucinations = ["thank you for watching", "thanks for watching", "you", "thanks", "thank you"]
+            if text.lower() in hallucinations:
+                logger.info(f"Filtered probable Whisper hallucination: '{text}'")
+                return ""
+
             logger.info(f"Successfully transcribed {file_path}")
-            return "This is a placeholder transcribed text. Replace with actual Whisper integration."
+            return text
+
         except Exception as e:
             logger.error(f"Error during transcription: {str(e)}")
-            raise e
+            return "" # Return empty on error to avoid breaking the flow
