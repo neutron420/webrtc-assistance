@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Webcam from 'react-webcam';
 import { 
-  Bell, Mic, MicOff, Video, VideoOff, CheckCircle2, Eye, AlertTriangle
+  Bell, Mic, MicOff, Video, VideoOff, CheckCircle2, Eye, AlertTriangle, Zap, Smile, ArrowUp
 } from 'lucide-react';
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 import { apiFetch, endpoints } from '@/lib/api-client';
@@ -33,12 +33,18 @@ export default function LiveInterviewRoom() {
   // MediaPipe State
   const [faceLandmarker, setFaceLandmarker] = useState<FaceLandmarker | null>(null);
   const [eyeContactScore, setEyeContactScore] = useState(0);
+  const [isSmiling, setIsSmiling] = useState(false);
+  const [confidenceLevel, setConfidenceLevel] = useState(70);
+  const [isNodding, setIsNodding] = useState(false);
   const smoothedEyeScoreRef = useRef(0);
   const requestRef = useRef<number | undefined>(undefined);
+  const lastNoseYRef = useRef<number | null>(null);
+  const noddingCountRef = useRef(0);
   
   // Real-time cues
   const [wpmAlert, setWpmAlert] = useState(false);
   const [eyeContactAlert, setEyeContactAlert] = useState(false);
+  const [smileCue, setSmileCue] = useState(false);
   const lookAwayTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -128,7 +134,7 @@ export default function LiveInterviewRoom() {
                 if (results.faceLandmarks && results.faceLandmarks.length > 0) {
                     const landmarks = results.faceLandmarks[0];
                     
-                    // Draw Iris Landmarks (Blue for debugging Day 3 KPI)
+                    // Draw Iris Landmarks (for debugging Day 3 KPI)
                     const leftIris = landmarks[468]; 
                     const rightIris = landmarks[473];
 
@@ -141,20 +147,53 @@ export default function LiveInterviewRoom() {
                     // Draw eye contours
                     ctx.strokeStyle = "rgba(255,255,255,0.5)";
                     ctx.lineWidth = 1;
-                    const eyeIndices = [33, 133, 362, 263]; // simplified eye bounds
+                    const eyeIndices = [33, 133, 362, 263];
                     eyeIndices.forEach(idx => {
                         const pt = landmarks[idx];
                         ctx.strokeRect(pt.x * canvas.width - 2, pt.y * canvas.height - 2, 4, 4);
                     });
 
-                    // Eye Contact Score Logic
+                    // 1. Eye Contact Score
                     const leftEyeInner = landmarks[133];
                     const leftEyeOuter = landmarks[33];
                     const leftRelativeX = (leftIris.x - leftEyeInner.x) / (leftEyeOuter.x - leftEyeInner.x);
                     const gazeOffCenter = Math.abs(leftRelativeX - 0.5);
-                    const score = Math.max(0, Math.min(100, Math.round(100 - (gazeOffCenter * 400))));
-                    smoothedEyeScoreRef.current = (smoothedEyeScoreRef.current * 0.8) + (score * 0.2);
-                    setEyeContactScore(Math.round(smoothedEyeScoreRef.current));
+                    const eyeScore = Math.max(0, Math.min(100, Math.round(100 - (gazeOffCenter * 400))));
+                    smoothedEyeScoreRef.current = (smoothedEyeScoreRef.current * 0.8) + (eyeScore * 0.2);
+                    const finalEyeScore = Math.round(smoothedEyeScoreRef.current);
+                    setEyeContactScore(finalEyeScore);
+
+                    // 2. Smile Detection (mouth corners vs face width)
+                    const mouthLeft = landmarks[61];
+                    const mouthRight = landmarks[291];
+                    const faceLeft = landmarks[454];
+                    const faceRight = landmarks[234];
+                    const mouthWidth = Math.sqrt(Math.pow(mouthRight.x - mouthLeft.x, 2) + Math.pow(mouthRight.y - mouthLeft.y, 2));
+                    const faceWidth = Math.sqrt(Math.pow(faceRight.x - faceLeft.x, 2) + Math.pow(faceRight.y - faceLeft.y, 2));
+                    const smileRatio = mouthWidth / faceWidth;
+                    const smiling = smileRatio > 0.45;
+                    setIsSmiling(smiling);
+
+                    // 3. Nodding Detection (nose tip vertical movement)
+                    const noseTip = landmarks[1];
+                    if (lastNoseYRef.current !== null) {
+                        const deltaY = Math.abs(noseTip.y - lastNoseYRef.current);
+                        if (deltaY > 0.005) {
+                            noddingCountRef.current += 1;
+                            if (noddingCountRef.current > 10) {
+                                setIsNodding(true);
+                                setTimeout(() => setIsNodding(false), 2000);
+                                noddingCountRef.current = 0;
+                            }
+                        }
+                    }
+                    lastNoseYRef.current = noseTip.y;
+
+                    // 4. Composite Confidence Level
+                    let confidence = Math.round(finalEyeScore * 0.7);
+                    if (smiling) confidence += 20;
+                    if (isNodding) confidence += 10;
+                    setConfidenceLevel(Math.min(100, confidence));
                 }
             }
         }
@@ -230,9 +269,10 @@ export default function LiveInterviewRoom() {
                   question_index: currentQuestionIndex + 1,
                   question_text: questions[currentQuestionIndex],
                   transcript: transcript,
-                  wpm: uploadData.wpm || 135,
+                  wpm: uploadData.wpm || 0,
                   filler_word_count: uploadData.filler_word_count || 0,
-                  eye_contact_score: eyeContactScore 
+                  eye_contact_score: eyeContactScore,
+                  confidence_score: confidenceLevel
               })
           });
           setFeedback(scoreData);
@@ -281,11 +321,20 @@ export default function LiveInterviewRoom() {
             </div>
         )}
 
+        {smileCue && (
+            <div className="fixed top-52 left-1/2 -translate-x-1/2 z-[60]">
+                <div className="bg-[#6ffbbe] text-black px-6 py-2 rounded-full font-bold flex items-center gap-3 shadow-2xl">
+                    <Smile size={20} />
+                    <span>NICE! A smile builds rapport.</span>
+                </div>
+            </div>
+        )}
+
         <nav className="sticky top-0 w-full z-30 bg-[#131315]/80 backdrop-blur-xl border-b border-white/5 shadow-xl">
             <div className="flex justify-between items-center h-16 px-6 w-full max-w-screen-2xl mx-auto">
                 <div className="flex items-center gap-10">
                     <span className="font-bold text-white tracking-tighter">Live Interview Studio</span>
-                    <div className="h-2 w-2 rounded-full bg-[#ffb4ab] animate-pulse"></div>
+                    <div className="h-2 w-2 rounded-full bg-[#6ffbbe] animate-pulse"></div>
                     <span className="text-[10px] text-[#c6c6c6] uppercase tracking-widest hidden sm:inline-block">Session: {sessionId}</span>
                 </div>
             </div>
@@ -300,15 +349,41 @@ export default function LiveInterviewRoom() {
                     <Webcam audio={false} mirrored={true} ref={webcamRef} className="w-full h-full object-cover" />
                     <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full object-cover pointer-events-none" />
                     
-                    <div className="absolute top-4 left-4 bg-[#201f22]/70 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 flex items-center gap-2">
-                        {isMediaPipeLoading ? (
-                            <><div className="w-2 h-2 rounded-full bg-[#6ffbbe] animate-spin"></div><span className="text-[10px] text-[#c6c6c6] uppercase tracking-widest">Vision Booting...</span></>
-                        ) : (
-                            <><Eye size={14} className={eyeContactScore > 65 ? "text-[#6ffbbe]" : "text-amber-400"} /><span className="text-xs font-medium text-white">Eye Contact: {eyeContactScore}%</span></>
+                    <div className="absolute top-4 left-4 flex flex-col gap-2 z-20">
+                        <div className="bg-[#201f22]/70 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 flex items-center gap-2">
+                            {isMediaPipeLoading ? (
+                                <><div className="w-2 h-2 rounded-full bg-[#6ffbbe] animate-spin"></div><span className="text-[10px] text-[#c6c6c6] uppercase tracking-widest">Vision Booting...</span></>
+                            ) : (
+                                <><Eye size={14} className={eyeContactScore > 65 ? "text-[#6ffbbe]" : "text-amber-400"} /><span className="text-xs font-medium text-white">Eye Contact: {eyeContactScore}%</span></>
+                            )}
+                        </div>
+                        
+                        {!isMediaPipeLoading && (
+                            <>
+                            <div className="bg-[#201f22]/70 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 flex items-center gap-2">
+                                <Zap size={14} className="text-[#6ffbbe]" />
+                                <span className="text-xs font-medium text-white">Confidence: {confidenceLevel}%</span>
+                            </div>
+                            
+                            <div className="flex gap-2">
+                                {isSmiling && (
+                                    <div className="bg-[#6ffbbe]/20 backdrop-blur-md px-2 py-1 rounded border border-[#6ffbbe]/40 flex items-center gap-1 animate-pulse">
+                                        <Smile size={12} className="text-[#6ffbbe]" />
+                                        <span className="text-[10px] uppercase font-bold text-[#6ffbbe]">Smiling</span>
+                                    </div>
+                                )}
+                                {isNodding && (
+                                    <div className="bg-[#6ffbbe]/20 backdrop-blur-md px-2 py-1 rounded border border-[#6ffbbe]/40 flex items-center gap-1 animate-bounce">
+                                        <ArrowUp size={12} className="text-[#6ffbbe]" />
+                                        <span className="text-[10px] uppercase font-bold text-[#6ffbbe]">Nodding</span>
+                                    </div>
+                                )}
+                            </div>
+                            </>
                         )}
                     </div>
                     
-                    <div className="absolute bottom-4 left-4 bg-[#201f22]/70 backdrop-blur-md px-3 py-1.5 rounded-lg border border-[red]/30 flex items-center gap-2">
+                    <div className="absolute bottom-4 left-4 bg-[#201f22]/70 backdrop-blur-md px-3 py-1.5 rounded-lg border border-[red]/30 flex items-center gap-2 z-20">
                         {isRecording ? (
                             <><div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div><span className="text-xs font-semibold text-white">RECORDING...</span></>
                         ) : (
