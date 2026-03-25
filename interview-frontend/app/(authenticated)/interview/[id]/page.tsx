@@ -28,6 +28,7 @@ export default function LiveInterviewRoom() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<BlobPart[]>([]);
   const webcamRef = useRef<Webcam>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // MediaPipe State
   const [faceLandmarker, setFaceLandmarker] = useState<FaceLandmarker | null>(null);
@@ -108,29 +109,53 @@ export default function LiveInterviewRoom() {
 
     const detect = () => {
         if (webcamRef.current && webcamRef.current.video && webcamRef.current.video.readyState === 4) {
+            const video = webcamRef.current.video;
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+
+            const videoWidth = video.videoWidth;
+            const videoHeight = video.videoHeight;
+            canvas.width = videoWidth;
+            canvas.height = videoHeight;
+
             const startTimeMs = performance.now();
-            const results = faceLandmarker.detectForVideo(webcamRef.current.video, startTimeMs);
+            const results = faceLandmarker.detectForVideo(video, startTimeMs);
             
-            if (results.faceLandmarks && results.faceLandmarks.length > 0) {
-                const landmarks = results.faceLandmarks[0];
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
-                // Iris Landmarks (Center of eyes)
-                const leftIris = landmarks[468]; 
-                
-                // Eye Boundary Landmarks
-                const leftEyeInner = landmarks[133];
-                const leftEyeOuter = landmarks[33];
-                
-                // Calculate Iris Center relative to Eye Bounds
-                const leftRelativeX = (leftIris.x - leftEyeInner.x) / (leftEyeOuter.x - leftEyeInner.x);
-                
-                // Score is higher when pupil is centered (around 0.5)
-                const gazeOffCenter = Math.abs(leftRelativeX - 0.5);
-                const score = Math.max(0, Math.min(100, Math.round(100 - (gazeOffCenter * 400))));
-                
-                // Smoothing to prevent flickering (Requested Stability)
-                smoothedEyeScoreRef.current = (smoothedEyeScoreRef.current * 0.8) + (score * 0.2);
-                setEyeContactScore(Math.round(smoothedEyeScoreRef.current));
+                if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+                    const landmarks = results.faceLandmarks[0];
+                    
+                    // Draw Iris Landmarks (Blue for debugging Day 3 KPI)
+                    const leftIris = landmarks[468]; 
+                    const rightIris = landmarks[473];
+
+                    ctx.fillStyle = "#6ffbbe";
+                    ctx.beginPath();
+                    ctx.arc(leftIris.x * canvas.width, leftIris.y * canvas.height, 4, 0, 2 * Math.PI);
+                    ctx.arc(rightIris.x * canvas.width, rightIris.y * canvas.height, 4, 0, 2 * Math.PI);
+                    ctx.fill();
+
+                    // Draw eye contours
+                    ctx.strokeStyle = "rgba(255,255,255,0.5)";
+                    ctx.lineWidth = 1;
+                    const eyeIndices = [33, 133, 362, 263]; // simplified eye bounds
+                    eyeIndices.forEach(idx => {
+                        const pt = landmarks[idx];
+                        ctx.strokeRect(pt.x * canvas.width - 2, pt.y * canvas.height - 2, 4, 4);
+                    });
+
+                    // Eye Contact Score Logic
+                    const leftEyeInner = landmarks[133];
+                    const leftEyeOuter = landmarks[33];
+                    const leftRelativeX = (leftIris.x - leftEyeInner.x) / (leftEyeOuter.x - leftEyeInner.x);
+                    const gazeOffCenter = Math.abs(leftRelativeX - 0.5);
+                    const score = Math.max(0, Math.min(100, Math.round(100 - (gazeOffCenter * 400))));
+                    smoothedEyeScoreRef.current = (smoothedEyeScoreRef.current * 0.8) + (score * 0.2);
+                    setEyeContactScore(Math.round(smoothedEyeScoreRef.current));
+                }
             }
         }
         requestRef.current = requestAnimationFrame(detect);
@@ -273,6 +298,7 @@ export default function LiveInterviewRoom() {
             <section className="flex-1 relative min-h-[400px] flex flex-col">
                 <div className="w-full flex-grow rounded-2xl overflow-hidden bg-[#0e0e10] border border-[#6ffbbe]/20 shadow-2xl relative">
                     <Webcam audio={false} mirrored={true} ref={webcamRef} className="w-full h-full object-cover" />
+                    <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full object-cover pointer-events-none" />
                     
                     <div className="absolute top-4 left-4 bg-[#201f22]/70 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 flex items-center gap-2">
                         {isMediaPipeLoading ? (
