@@ -72,13 +72,13 @@ export default function SetupDashboard() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* TopNavBar Component */}
-      <nav className="sticky top-0 w-full z-30 bg-[#131315]/80 backdrop-blur-xl border-b border-white/5 shadow-xl">
+      <nav className="sticky top-0 w-full z-30 bg-background backdrop-blur-xl border-b border-white/5 shadow-xl">
           <div className="flex justify-between items-center h-16 px-6 w-full max-w-screen-2xl mx-auto">
               <div className="hidden lg:flex items-center gap-10">
                   <div className="flex gap-6">
-                      <a className="font-medium text-sm tracking-tight text-white border-b-2 border-white pb-1" href="#">Dashboard</a>
-                      <a className="font-medium text-sm tracking-tight text-[#c6c6c6] hover:text-white transition-colors" href="#">Interviews</a>
-                      <a className="font-medium text-sm tracking-tight text-[#c6c6c6] hover:text-white transition-colors" href="#">Scorecards</a>
+                      <a className="font-medium text-sm tracking-tight text-foreground hover:text-foreground/60 border-b-2 border-white pb-1" href="/dashboard">Dashboard</a>
+                      <a className="font-medium text-sm tracking-tight text-foreground hover:text-foreground/60 transition-colors" href="#">Interviews</a>
+                      <a className="font-medium text-sm tracking-tight text-foreground hover:text-foreground/60 transition-colors" href="#">Scorecards</a>
                   </div>
               </div>
               
@@ -86,24 +86,25 @@ export default function SetupDashboard() {
                   <button className="text-[#c6c6c6] hover:text-white transition-colors">
                       <Bell size={20} />
                   </button>
-                  <div className="w-8 h-8 rounded-full border border-white/10 overflow-hidden bg-[#353437]">
+                  <div className="w-8 h-8 rounded-full border border-white/10 overflow-hidden bg-background">
                       <img alt="User" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC72Ln57rzUqFcpyedeHPx2NqmWK5bqM-9WH537CcJRU_dTqPP_epc17-Tg4P-q5SAfqYEO9lI6vIq2yJlImB7zgkSJaG7XBAK7s4Qn20x_lPtxFg7KDzd5isjzoAuQXRNYJwVNqgd03zH_vZqFGys-ux6ddZkdSqMcEy5VpZKTBwMQ2ydG_zLGlpyhoYWggAeenL0_X7RdoM7DZkOaCyHrBBPjFTPMoAOfV00RZK8HFHhT_bz6x_Y4jMnoXngixlweEqJEGP5HTpU"/>
                   </div>
               </div>
           </div>
       </nav>
 
-      <main className="flex-grow pt-16 pb-16 px-6 flex items-center justify-center relative">
+      <main className="flex-grow pt-16 pb-16 px-6 flex items-center justify-center relative bg-background">
           <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-3/4 h-1/2 bg-[#6ffbbe]/5 blur-[120px] rounded-full pointer-events-none -z-10"></div>
 
           <div className="w-full max-w-2xl z-10">
               <div className="mb-10 text-center">
-                  <h1 className="text-4xl md:text-5xl font-extrabold tracking-tighter text-white mb-3">Configure Your Interview</h1>
-                  <p className="text-[#c6c6c6] text-xs uppercase tracking-[0.2em]">The Obsidian Lens: High Fidelity Simulation</p>
+                  <h1 className="text-4xl md:text-5xl font-extrabold tracking-tighter text-foreground mb-3">Configure Your Interview</h1>
+                  <p className="text-foreground/80 text-xs uppercase tracking-[0.2em]">The Name Lens: High Fidelity Simulation</p>
               </div>
 
-              <div className="bg-[#1c1b1d]/70 backdrop-blur-xl border border-[#2a2a2c] rounded-2xl p-8 md:p-12 shadow-2xl">
                   <form className="space-y-8" onSubmit={handleStart}>
+              <div className="bg-background backdrop-blur-xl border border-foreground/40 rounded-2xl p-8 md:p-12 shadow-2xl">
+                        
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                           {/* Interview Type */}
                           <div className="space-y-3">
@@ -111,7 +112,7 @@ export default function SetupDashboard() {
                                   Interview Type
                               </label>
                               <select 
-                                  className="w-full bg-[#0e0e10] border border-[#353437] rounded-lg py-3 px-4 text-[#e5e1e4] appearance-none focus:ring-1 focus:ring-[#6ffbbe]/50 focus:border-[#6ffbbe]/50 outline-none transition-all duration-200"
+                                  className="w-full bg-gray-100 border border-background rounded-lg py-3 px-4 text-foreground appearance-none focus:ring-1 focus:ring-foreground/30 focus:border-foreground/30 outline-none transition-all duration-200"
                                   value={formData.interviewType}
                                   onChange={(e) => setFormData({...formData, interviewType: e.target.value})}
                               >
@@ -128,7 +129,7 @@ export default function SetupDashboard() {
                                   Target Role
                               </label>
                               <select 
-                                  className="w-full bg-[#0e0e10] border border-[#353437] rounded-lg py-3 px-4 text-[#e5e1e4] appearance-none focus:ring-1 focus:ring-[#6ffbbe]/50 focus:border-[#6ffbbe]/50 outline-none transition-all duration-200"
+                                  className="w-full bg-gray-100 border border-background rounded-lg py-3 px-4 text-foreground appearance-none focus:ring-1 focus:ring-foreground/30 focus:border-foreground/30 outline-none transition-all duration-200"
                                   value={formData.role}
                                   onChange={(e) => setFormData({...formData, role: e.target.value})}
                               >
@@ -145,7 +146,7 @@ export default function SetupDashboard() {
                                   Target Company
                               </label>
                               <select 
-                                  className="w-full bg-[#0e0e10] border border-[#353437] rounded-lg py-3 px-4 text-[#e5e1e4] appearance-none focus:ring-1 focus:ring-[#6ffbbe]/50 focus:border-[#6ffbbe]/50 outline-none transition-all duration-200"
+                                  className="w-full bg-gray-100 border border-background rounded-lg py-3 px-4 text-foreground appearance-none focus:ring-1 focus:ring-foreground/30 focus:border-foreground/30 outline-none transition-all duration-200"
                                   value={formData.company}
                                   onChange={(e) => setFormData({...formData, company: e.target.value})}
                               >
@@ -165,7 +166,7 @@ export default function SetupDashboard() {
                                   Difficulty
                               </label>
                               <select 
-                                  className="w-full bg-[#0e0e10] border border-[#353437] rounded-lg py-3 px-4 text-[#e5e1e4] appearance-none focus:ring-1 focus:ring-[#6ffbbe]/50 focus:border-[#6ffbbe]/50 outline-none transition-all duration-200"
+                                  className="w-full bg-gray-100 border border-background rounded-lg py-3 px-4 text-foreground appearance-none focus:ring-1 focus:ring-foreground/30 focus:border-foreground/30 outline-none transition-all duration-200"
                                   value={formData.difficulty}
                                   onChange={(e) => setFormData({...formData, difficulty: e.target.value})}
                               >
@@ -176,27 +177,28 @@ export default function SetupDashboard() {
                           </div>
                       </div>
 
+                      </div>
                       <div className="pt-8">
-                          <button disabled={isLoading} className="w-full bg-white text-[#09090b] py-4 rounded-lg font-bold text-sm uppercase tracking-widest hover:bg-gray-200 active:scale-[0.98] transition-all duration-200 shadow-xl shadow-white/5 disabled:opacity-50" type="submit">
+                          <button disabled={isLoading} className="w-full bg-foreground text-background py-4 rounded-lg font-bold text-sm uppercase tracking-widest hover:bg-foreground/90 active:scale-[0.98] transition-all duration-200 shadow-xl shadow-white/5 disabled:opacity-50" type="submit">
                               {isLoading ? 'GENERATING AI SESSION...' : 'START INTERVIEW PROCESS'}
                           </button>
                       </div>
                   </form>
-              </div>
+
 
               {progressData && progressData.sessions?.length > 0 && (
                   <div className="mt-12 space-y-6">
-                      <h3 className="text-xl font-bold text-white tracking-tight">Recent Performance History</h3>
+                      <h3 className="text-xl font-bold text-foreground tracking-tight">Recent Performance History</h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                           {progressData.sessions.slice(0, 3).map((session: any) => (
                               <div key={session.session_id} 
                                    onClick={() => router.push(`/scorecard/OBS-${session.session_id}`)}
-                                   className="p-5 bg-[#1c1b1d] rounded-xl border border-[#2a2a2c] hover:border-[#6ffbbe]/30 transition-all cursor-pointer group">
+                                   className="p-5 bg-background rounded-xl border border-foreground/30 hover:border-foreground/60 transition-all cursor-pointer group">
                                   <div className="flex justify-between items-start mb-3">
-                                      <span className="text-[10px] uppercase font-bold text-[#6ffbbe] tracking-widest">{session.interview_type}</span>
-                                      <span className="text-xl font-black text-white">{session.overall_grade}</span>
+                                      <span className="text-[10px] uppercase font-bold text-foreground tracking-widest">{session.interview_type}</span>
+                                      <span className="text-xl font-black text-foreground">{session.overall_grade}</span>
                                   </div>
-                                  <p className="text-sm font-semibold text-white mb-1 truncate">{session.role}</p>
+                                  <p className="text-sm font-semibold text-foreground mb-1 truncate">{session.role}</p>
                                   <p className="text-[10px] text-[#919191] uppercase">{new Date(session.created_at).toLocaleDateString()}</p>
                               </div>
                           ))}

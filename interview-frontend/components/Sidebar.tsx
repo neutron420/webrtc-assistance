@@ -67,7 +67,7 @@ export default function Sidebar({ onToggle }: SidebarProps) {
 
   return (
     <aside 
-      className={`h-screen fixed left-0 top-0 bg-[#1c1b1d] py-6 z-40 border-r border-[#2a2a2c] flex flex-col shadow-2xl transition-all duration-300 ease-in-out ${
+      className={`h-screen fixed left-0 top-0 bg-background py-6 z-40 border-r border-foreground flex flex-col shadow-2xl transition-all duration-300 ease-in-out ${
         isSidebarOpen ? 'w-64 px-4' : 'w-20 px-3'
       } hidden lg:flex`}
     >
@@ -81,11 +81,11 @@ export default function Sidebar({ onToggle }: SidebarProps) {
 
       {/* Logo area */}
       <div className={`flex items-center ${isSidebarOpen ? 'justify-start px-2' : 'justify-center'} mb-10 h-8`}>
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#6ffbbe] to-[#00a572] flex items-center justify-center shrink-0">
-          <span className="text-[#09090b] font-black text-xs">O.A</span>
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-black to-gray-400 flex items-center justify-center shrink-0">
+          <span className="text-white font-black text-xs">S.A</span>
         </div>
         {isSidebarOpen && (
-          <span className="ml-3 font-bold text-white tracking-tight whitespace-nowrap">Obsidian AI</span>
+          <span className="ml-3 font-bold text-foreground tracking-tight whitespace-nowrap">SomeName AI</span>
         )}
       </div>
 
@@ -104,8 +104,8 @@ export default function Sidebar({ onToggle }: SidebarProps) {
               }}
               className={`flex items-center ${isSidebarOpen ? 'justify-start px-4' : 'justify-center'} py-3 rounded-lg transition-all overflow-hidden ${
                 isActive 
-                  ? 'text-[#6ffbbe] bg-[#201f22] border-l-2 border-[#6ffbbe] scale-[1.02]' 
-                  : 'text-[#c6c6c6] hover:bg-[#201f22] hover:text-white'
+                  ? 'text-foreground bg-background border-l-2 border-gray-400 scale-[1.02]' 
+                  : 'text-foreground'
               }`}
               title={link.name}
             >
