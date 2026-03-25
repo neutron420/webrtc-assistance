@@ -104,7 +104,7 @@ const LiveSession = () => {
   }, []);
 
   return (
-    <AppLayout>
+    <AppLayout>  
       <div className="p-4 lg:p-6">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
