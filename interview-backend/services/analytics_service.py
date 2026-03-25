@@ -57,8 +57,7 @@ class AnalyticsService:
         
         If duration_seconds is provided (from Whisper timestamps), 
         uses that for accurate calculation.
-        Otherwise, estimates based on average word count and a default 
-        speaking duration assumption.
+        Otherwise, estimates duration from word count assuming ~2.5 words/second.
         """
         if not transcript or not transcript.strip():
             return 0.0
@@ -69,10 +68,12 @@ class AnalyticsService:
             minutes = duration_seconds / 60.0
             wpm = word_count / minutes
         else:
-            # Fallback: assume ~150 WPM average speaking rate
-            # and estimate duration from word count
-            wpm = 150.0  # default placeholder
-            logger.warning("No duration provided, using default WPM estimate")
+            # Estimate: average person speaks ~2.5 words per second
+            estimated_duration = word_count / 2.5
+            if estimated_duration > 0:
+                wpm = word_count / (estimated_duration / 60.0)
+            else:
+                wpm = 0.0
 
         wpm = round(wpm, 1)
         logger.info(f"Calculated WPM: {wpm} ({word_count} words)")

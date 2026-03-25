@@ -258,6 +258,23 @@ async def get_scorecard(session_id: int, db: AsyncSession = Depends(get_db)):
         for a in answers
     ]
 
+    # Generate dynamic recommendations based on REAL session data
+    recommendations = []
+    if (session.communication_score or 0) < 60:
+        recommendations.append("Practice structuring your answers using the STAR method.")
+    if (session.technical_score or 0) < 60:
+        recommendations.append("Review core concepts and practice explaining them clearly.")
+    if (session.confidence_score or 0) < 60:
+        recommendations.append("Slow down, take a breath, and speak with conviction.")
+    if (session.avg_eye_contact or 0) < 50:
+        recommendations.append("Focus on maintaining eye contact with the camera during answers.")
+    if (session.total_filler_words or 0) > 10:
+        recommendations.append("Reduce filler words — try pausing instead of saying 'um' or 'like'.")
+    if (session.avg_wpm or 0) > 170:
+        recommendations.append("You're speaking too fast — aim for 130-160 WPM for clarity.")
+    if not recommendations:
+        recommendations.append("Great job! Keep practicing to aim for perfection.")
+
     return FullScorecardResponse(
         session_id=session.id,
         interview_type=session.interview_type,
@@ -268,5 +285,5 @@ async def get_scorecard(session_id: int, db: AsyncSession = Depends(get_db)):
         communication_score=session.communication_score or 0.0,
         confidence_score=session.confidence_score or 0.0,
         technical_score=session.technical_score or 0.0,
-        recommendations=["Keep working on the STAR method.", "Improve eye contact.", "Reduce filler words."],
+        recommendations=recommendations,
     )

@@ -92,25 +92,6 @@ Respond ONLY in JSON format:
                 "full_feedback": "We encountered an error analyzing your answer. Please try again."
             }
 
-        # Simulated intelligent response
-        word_count = len(transcript.split()) if transcript else 0
-        if word_count > 50:
-            return {
-                "relevance_score": 7.5,
-                "completeness_score": 6.0,
-                "star_structure_feedback": "You provided a clear 'Situation' and 'Action', but the 'Result' was vague. Quantify your impact next time.",
-                "technical_grade": "B+",
-                "full_feedback": f"Good answer with {word_count} words. You explained your approach well, but forgot to mention the measurable outcome. Next time, end with 'As a result, we achieved X% improvement.'"
-            }
-        else:
-            return {
-                "relevance_score": 4.0,
-                "completeness_score": 3.0,
-                "star_structure_feedback": "Answer was too brief. You skipped the 'Situation' and 'Result' entirely.",
-                "technical_grade": "C",
-                "full_feedback": f"Your answer was only {word_count} words — too short for a behavioral question. Use the full STAR framework: describe the Situation, your Task, the Actions you took, and the measurable Result."
-            }
-
     # ──────────────────────────────────────────────
     # 2. Overall Session Grading
     # ──────────────────────────────────────────────
@@ -199,9 +180,47 @@ Generate a structured study plan with:
 """
         logger.info(f"Generating study plan for user: {user_name}")
 
-        # ── PLACEHOLDER: Replace with actual GPT-4o call ──
-        await asyncio.sleep(1)
+        # ── REAL GPT-4o CALL for Personalized Study Plan ──
+        if self.client:
+            try:
+                gpt_prompt = f"""You are an expert career coach specializing in FAANG interview preparation.
+Based on the following interview performance data for {user_name}, create a personalized 4-week study plan.
 
+Past Sessions Data: {json.dumps(session_summaries, default=str)}
+Focus Areas Requested: {focus_areas or 'Auto-detect weaknesses from the data'}
+
+Respond ONLY in this exact JSON format:
+{{
+    "plan_title": "Personalized Interview Prep Plan for {user_name}",
+    "weekly_plan": [
+        {{"week": 1, "theme": "...", "tasks": ["task1", "task2", "task3"]}},
+        {{"week": 2, "theme": "...", "tasks": ["task1", "task2", "task3"]}},
+        {{"week": 3, "theme": "...", "tasks": ["task1", "task2", "task3"]}},
+        {{"week": 4, "theme": "...", "tasks": ["task1", "task2", "task3"]}}
+    ],
+    "recommended_topics": ["topic1", "topic2", "topic3", "topic4", "topic5"],
+    "practice_questions": ["q1", "q2", "q3", "q4", "q5"],
+    "resources": ["resource1", "resource2", "resource3", "resource4", "resource5"]
+}}
+
+Make the plan highly specific to the user's weak areas. If communication is low, focus on STAR method.
+If technical is low, focus on DSA practice. If confidence is low, focus on body language and mock reps."""
+
+                response = await self.client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "You are a career coach. Respond ONLY with valid JSON."},
+                        {"role": "user", "content": gpt_prompt}
+                    ],
+                    response_format={"type": "json_object"}
+                )
+                plan = json.loads(response.choices[0].message.content)
+                logger.info("Study plan generated via GPT-4o successfully.")
+                return plan
+            except Exception as e:
+                logger.error(f"GPT-4o Study Plan Error: {e}. Falling back to static plan.")
+
+        # ── FALLBACK: Static Study Plan (if no API key or API fails) ──
         return {
             "plan_title": f"Personalized Interview Prep Plan for {user_name}",
             "weekly_plan": [
