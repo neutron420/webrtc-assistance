@@ -2,6 +2,9 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Input } from './input';
+import { cn } from '@/lib/utils';
+import { apiFetch } from '@/lib/api-client';
 import { Button } from './button';
 import { useRouter } from 'next/navigation';
 
@@ -13,8 +16,6 @@ import {
 	User,
 	Loader2,
 } from 'lucide-react';
-import { Input } from './input';
-import { cn } from '@/lib/utils';
 
 interface AuthPageProps {
 	mode?: 'login' | 'signup';
@@ -37,7 +38,6 @@ export function AuthPage({ mode: initialMode = 'login' }: AuthPageProps) {
 		setIsLoading(true);
 		setError(null);
 
-		const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 		const endpoint = mode === 'login' ? '/user/login' : '/user/register';
 
 		try {
@@ -45,22 +45,12 @@ export function AuthPage({ mode: initialMode = 'login' }: AuthPageProps) {
 				? { email: formData.email, password: formData.password }
 				: { name: formData.name, email: formData.email, password: formData.password };
 
-			const response = await fetch(`${baseUrl}${endpoint}`, {
+			const data = await apiFetch(endpoint, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(body),
 			});
 
-			const data = await response.json();
-
-			if (!response.ok) {
-				throw new Error(data.detail || 'Something went wrong');
-			}
-
-			// In a real app, you'd save a token or session here
 			localStorage.setItem('user', JSON.stringify(data));
-			
-			// Redirect to dashboard
 			router.push('/dashboard');
 		} catch (err: any) {
 			setError(err.message);

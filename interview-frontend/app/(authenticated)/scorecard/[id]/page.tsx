@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiFetch, endpoints } from '@/lib/api-client';
 
 export default function PostInterviewScorecard({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -11,17 +12,14 @@ export default function PostInterviewScorecard({ params }: { params: { id: strin
   useEffect(() => {
     const loadScorecard = async () => {
       try {
-        const numId = params.id.replace('OBS-', '');
-        const res = await fetch(`http://localhost:8000/scoring/session/${numId}`);
-        if (res.ok) {
-            const result = await res.json();
-            setData(result);
-        } else {
-            const stored = localStorage.getItem(`scorecard_${numId}`);
-            if (stored) setData(JSON.parse(stored));
-        }
+        const numId = parseInt(params.id.replace('OBS-', '')) || 1;
+        const result = await apiFetch(endpoints.getSessionScoring(numId));
+        setData(result);
       } catch (err) {
         console.error("Scorecard Load Error:", err);
+        const numId = params.id.replace('OBS-', '');
+        const stored = localStorage.getItem(`scorecard_${numId}`);
+        if (stored) setData(JSON.parse(stored));
       } finally {
         setIsLoading(false);
       }
