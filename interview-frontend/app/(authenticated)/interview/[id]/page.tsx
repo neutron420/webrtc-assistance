@@ -7,6 +7,7 @@ import {
   Bell, Mic, MicOff, Video, VideoOff, CheckCircle2, Eye, AlertTriangle
 } from 'lucide-react';
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
+import { apiFetch, endpoints } from '@/lib/api-client';
 
 export default function LiveInterviewRoom() {
   const router = useRouter();
@@ -57,13 +58,10 @@ export default function LiveInterviewRoom() {
     // 0. Check if session is already finalized (Security/Stability Task)
     const checkSessionStatus = async () => {
         try {
-            const res = await fetch(`http://localhost:8000/scoring/session/${numSessionId}`);
-            if (res.ok) {
-                const data = await res.json();
-                if (data.overall_grade && data.overall_grade !== "N/A") {
-                    alert("This session has already been finalized. Redirecting to your scorecard.");
-                    router.push(`/scorecard/${sessionId}`);
-                }
+            const data = await apiFetch(endpoints.getSessionScoring(numSessionId));
+            if (data.overall_grade && data.overall_grade !== "N/A") {
+                alert("This session has already been finalized. Redirecting to your scorecard.");
+                router.push(`/scorecard/${sessionId}`);
             }
         } catch (e) { console.error("Status check failed", e); }
     };
@@ -179,7 +177,7 @@ export default function LiveInterviewRoom() {
           const formData = new FormData();
           formData.append("file", audioBlob, "answer.webm");
 
-          const uploadRes = await fetch("http://localhost:8000/upload-audio", {
+          const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${endpoints.uploadAudio}`, {
               method: "POST",
               body: formData
           });
@@ -200,9 +198,8 @@ export default function LiveInterviewRoom() {
               return;
           }
 
-          const scoreRes = await fetch("http://localhost:8000/scoring/submit-answer", {
+          const scoreData = await apiFetch(endpoints.submitAnswer, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                   session_id: numSessionId,
                   question_index: currentQuestionIndex + 1,
@@ -213,9 +210,6 @@ export default function LiveInterviewRoom() {
                   eye_contact_score: eyeContactScore 
               })
           });
-
-          if (!scoreRes.ok) throw new Error("Scoring failed");
-          const scoreData = await scoreRes.json();
           setFeedback(scoreData);
           setIsAiProcessing(false);
 
@@ -236,11 +230,8 @@ export default function LiveInterviewRoom() {
 
   const handleEndInterview = async () => {
     try {
-        const res = await fetch(`http://localhost:8000/scoring/finalize/${numSessionId}`, { method: 'POST' });
-        if (res.ok) {
-            const finalScorecard = await res.json();
-            localStorage.setItem(`scorecard_${numSessionId}`, JSON.stringify(finalScorecard));
-        }
+        const finalScorecard = await apiFetch(endpoints.finalizeSession(numSessionId), { method: 'POST' });
+        localStorage.setItem(`scorecard_${numSessionId}`, JSON.stringify(finalScorecard));
     } catch(e) { console.error("Could not finalize", e); }
     router.push(`/scorecard/${sessionId}`);
   };
