@@ -3,6 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch, endpoints } from '@/lib/api-client';
+import { 
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer 
+} from 'recharts';
 
 export default function PostInterviewScorecard({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -52,29 +55,28 @@ export default function PostInterviewScorecard({ params }: { params: { id: strin
                 </div>
 
                 <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-[#1c1b1d] p-8 rounded-xl border border-[#474747]/20 flex items-center justify-center min-h-[320px]">
-                        <div className="text-center">
-                            <p className="text-xs uppercase text-[#c6c6c6] tracking-widest mb-6">Mastery Grid</p>
-                            <div className="flex gap-4">
-                                <div className="space-y-4">
-                                    <p className="text-[10px] text-[#919191] uppercase">Comm.</p>
-                                    <div className="h-40 w-8 bg-[#2a2a2c] rounded-full relative overflow-hidden">
-                                        <div className="absolute bottom-0 w-full bg-[#6ffbbe]" style={{ height: `${data?.communication_score || 0}%` }}></div>
-                                    </div>
-                                </div>
-                                <div className="space-y-4">
-                                    <p className="text-[10px] text-[#919191] uppercase">Tech.</p>
-                                    <div className="h-40 w-8 bg-[#2a2a2c] rounded-full relative overflow-hidden">
-                                        <div className="absolute bottom-0 w-full bg-white" style={{ height: `${data?.technical_score || 0}%` }}></div>
-                                    </div>
-                                </div>
-                                <div className="space-y-4">
-                                    <p className="text-[10px] text-[#919191] uppercase">Conf.</p>
-                                    <div className="h-40 w-8 bg-[#2a2a2c] rounded-full relative overflow-hidden">
-                                        <div className="absolute bottom-0 w-full bg-[#6ffbbe]/50" style={{ height: `${data?.confidence_score || 0}%` }}></div>
-                                    </div>
-                                </div>
-                            </div>
+                    <div className="bg-[#1c1b1d] p-8 rounded-xl border border-[#474747]/20 flex flex-col items-center justify-center min-h-[320px]">
+                        <p className="text-xs uppercase text-[#c6c6c6] tracking-widest mb-6">Performance Radar</p>
+                        <div className="w-full h-full min-h-[220px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
+                                    { subject: 'Comm.', A: data?.communication_score || 0, fullMark: 100 },
+                                    { subject: 'Tech.', A: data?.technical_score || 0, fullMark: 100 },
+                                    { subject: 'Conf.', A: data?.confidence_score || 0, fullMark: 100 },
+                                    { subject: 'STAR', A: data?.star_score || 85, fullMark: 100 },
+                                    { subject: 'Eye Cont.', A: data?.answers?.[0]?.eye_contact_score || 70, fullMark: 100 },
+                                ]}>
+                                    <PolarGrid stroke="#474747" />
+                                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#c6c6c6', fontSize: 10 }} />
+                                    <Radar
+                                        name="Candidate"
+                                        dataKey="A"
+                                        stroke="#6ffbbe"
+                                        fill="#6ffbbe"
+                                        fillOpacity={0.4}
+                                    />
+                                </RadarChart>
+                            </ResponsiveContainer>
                         </div>
                     </div>
 
