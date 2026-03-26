@@ -9,6 +9,17 @@ import {
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 import { apiFetch, endpoints } from '@/lib/api-client';
 
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const getCenteredRatioScore = (value: number, start: number, end: number) => {
+  const span = Math.abs(end - start);
+  if (span < 0.0001) return 0;
+
+  const min = Math.min(start, end);
+  const normalized = (value - min) / span;
+  return clamp(1 - Math.abs(normalized - 0.5) * 2, 0, 1);
+};
+
 export default function LiveInterviewRoom() {
   const router = useRouter();
   const params = useParams();
@@ -24,7 +35,7 @@ export default function LiveInterviewRoom() {
   const [isAiProcessing, setIsAiProcessing] = useState(false);
   const [isMediaPipeLoading, setIsMediaPipeLoading] = useState(true);
   const [feedback, setFeedback] = useState<any>(null);
-  const [       realTimeTranscript, setRealTimeTranscript] = useState<string>("");
+  const [realTimeTranscript, setRealTimeTranscript] = useState<string>("");
   const [transcriptionError, setTranscriptionError] = useState<string>("");
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -151,6 +162,16 @@ export default function LiveInterviewRoom() {
                     // Draw Iris Landmarks (for debugging Day 3 KPI)
                     const leftIris = landmarks[468]; 
                     const rightIris = landmarks[473];
+                    const leftEyeOuter = landmarks[33];
+                    const leftEyeInner = landmarks[133];
+                    const rightEyeInner = landmarks[362];
+                    const rightEyeOuter = landmarks[263];
+                    const upperFace = landmarks[10];
+                    const noseTip = landmarks[1];
+                    const mouthLeft = landmarks[61];
+                    const mouthRight = landmarks[291];
+                    const faceLeft = landmarks[454];
+                    const faceRight = landmarks[234];
 
                     ctx.fillStyle = "#6ffbbe";
                     ctx.beginPath();
@@ -168,20 +189,20 @@ export default function LiveInterviewRoom() {
                     });
 
                     // 1. Eye Contact Score
-                    const leftEyeInner = landmarks[133];
-                    const leftEyeOuter = landmarks[33];
-                    const leftRelativeX = (leftIris.x - leftEyeInner.x) / (leftEyeOuter.x - leftEyeInner.x);
-                    const gazeOffCenter = Math.abs(leftRelativeX - 0.5);
-                    const eyeScore = Math.max(0, Math.min(100, Math.round(100 - (gazeOffCenter * 400))));
-                    smoothedEyeScoreRef.current = (smoothedEyeScoreRef.current * 0.8) + (eyeScore * 0.2);
+                    const leftEyeScore = getCenteredRatioScore(leftIris.x, leftEyeInner.x, leftEyeOuter.x);
+                    const rightEyeScore = getCenteredRatioScore(rightIris.x, rightEyeInner.x, rightEyeOuter.x);
+                    const headAlignmentScore = getCenteredRatioScore(noseTip.x, faceLeft.x, faceRight.x);
+                    const verticalAlignmentScore = getCenteredRatioScore(noseTip.y, upperFace.y, mouthLeft.y);
+                    const rawEyeScore = (
+                        ((leftEyeScore + rightEyeScore) / 2) * 0.55 +
+                        headAlignmentScore * 0.35 +
+                        verticalAlignmentScore * 0.10
+                    ) * 100;
+                    smoothedEyeScoreRef.current = (smoothedEyeScoreRef.current * 0.85) + (rawEyeScore * 0.15);
                     const finalEyeScore = Math.round(smoothedEyeScoreRef.current);
                     setEyeContactScore(finalEyeScore);
 
                     // 2. Smile Detection (mouth corners vs face width)
-                    const mouthLeft = landmarks[61];
-                    const mouthRight = landmarks[291];
-                    const faceLeft = landmarks[454];
-                    const faceRight = landmarks[234];
                     const mouthWidth = Math.sqrt(Math.pow(mouthRight.x - mouthLeft.x, 2) + Math.pow(mouthRight.y - mouthLeft.y, 2));
                     const faceWidth = Math.sqrt(Math.pow(faceRight.x - faceLeft.x, 2) + Math.pow(faceRight.y - faceLeft.y, 2));
                     const smileRatio = mouthWidth / faceWidth;
@@ -189,7 +210,6 @@ export default function LiveInterviewRoom() {
                     setIsSmiling(smiling);
 
                     // 3. Nodding Detection (nose tip vertical movement)
-                    const noseTip = landmarks[1];
                     if (lastNoseYRef.current !== null) {
                         const deltaY = Math.abs(noseTip.y - lastNoseYRef.current);
                         if (deltaY > 0.005) {
@@ -208,6 +228,8 @@ export default function LiveInterviewRoom() {
                     if (smiling) confidence += 20;
                     if (isNodding) confidence += 10;
                     setConfidenceLevel(Math.min(100, confidence));
+                } else {
+                    setEyeContactScore(0);
                 }
             }
         }
@@ -406,6 +428,11 @@ export default function LiveInterviewRoom() {
                         className="w-full h-full object-cover"
                         onUserMedia={handleCameraReady}
                         // onUserMediaError={handleCameraError}
+                    />
+                    <canvas
+                        ref={canvasRef}
+                        className="absolute inset-0 h-full w-full pointer-events-none"
+                        style={{ transform: "scaleX(-1)" }}
                     />
                     
                     {/* Live Subtitle Overlay */}
