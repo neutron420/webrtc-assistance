@@ -2,14 +2,24 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Headphones, Video, BarChart3, Settings, HelpCircle } from "lucide-react";
+import { Headphones, Video, BarChart3, Settings, HelpCircle, LayoutDashboard, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+} from "@/components/Sidebar";
 
 const sidebarItems = [
-  { icon: Headphones, label: "PREPARATION", path: "/" },
-  { icon: Video, label: "LIVE SESSION", path: "/live" },
-  { icon: BarChart3, label: "ANALYTICS", path: "/scorecards" },
-  { icon: Settings, label: "SETTINGS", path: "/settings" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: Headphones, label: "Preparation", path: "/" },
+  { icon: Video, label: "Live Session", path: "/live" },
+  { icon: BarChart3, label: "Analytics", path: "/scorecards" },
 ];
 
 const AppSidebar = () => {
@@ -22,40 +32,66 @@ const AppSidebar = () => {
         {/* <p className="hidden lg:block text-primary text-xs font-semibold tracking-wider mt-0.5">PREMIUM TIER</p> */}
       </div>
 
-      <nav className="flex-1 mt-4 space-y-1 px-2 lg:px-3">
-        {sidebarItems.map((item) => {
-          const isActive = pathname === item.path;
-          return (
-            <Link
-              key={item.path}
-              href={item.path}
-              className={cn(
-                "flex items-center gap-3 px-3 py-3 rounded-lg text-xs font-semibold tracking-wider transition-colors relative",
-                isActive
-                  ? "text-primary bg-sidebar-accent"
-                  : "text-sidebar-foreground hover:text-foreground hover:bg-sidebar-accent"
-              )}
-            >
-              {isActive && (
-                <div className="absolute left-0 top-1 bottom-1 w-0.5 bg-primary rounded-full" />
-              )}
-              <item.icon className="w-5 h-5 shrink-0" />
-              <span className="hidden lg:block">{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
+      <SidebarContent className="px-2 mt-4">
+        <SidebarMenu>
+          {sidebarItems.map((item) => {
+            const isActive = pathname === item.path;
+            return (
+              <SidebarMenuItem key={item.path}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive}
+                  tooltip={item.label}
+                  className={cn(
+                    "text-zinc-400 hover:text-white hover:bg-zinc-900 transition-all duration-200",
+                    isActive && "text-white bg-zinc-900"
+                  )}
+                >
+                  <Link href={item.path}>
+                    <item.icon className="w-5 h-5 shrink-0" />
+                    <span className="font-semibold text-xs tracking-wide">{item.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
+      </SidebarContent>
 
-      <div className="px-2 lg:px-3 pb-6 space-y-1">
-        <button className="hidden lg:flex w-full items-center justify-center py-2.5 rounded-lg border border-border text-xs font-semibold tracking-wider text-muted-foreground hover:text-foreground transition-colors">
-          UPGRADE TO PRO
-        </button>
-        <button className="flex items-center gap-3 px-3 py-3 rounded-lg text-xs font-semibold tracking-wider text-sidebar-foreground hover:text-foreground transition-colors w-full">
-          <HelpCircle className="w-5 h-5 shrink-0" />
-          <span className="hidden lg:block">HELP</span>
-        </button>
-      </div>
-    </aside>
+      <SidebarFooter className="p-4 space-y-2 mt-auto">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              className="text-zinc-400 hover:text-white hover:bg-zinc-900 transition-all duration-200"
+            >
+              <Link href="/settings">
+                <Settings className="w-5 h-5 shrink-0" />
+                <span className="font-semibold text-xs tracking-wide group-data-[collapsible=icon]:hidden">Settings</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              className="text-zinc-400 hover:text-white hover:bg-zinc-900 transition-all duration-200"
+            >
+              <Link href="/help">
+                <HelpCircle className="w-5 h-5 shrink-0" />
+                <span className="font-semibold text-xs tracking-wide group-data-[collapsible=icon]:hidden">Help Center</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+        
+        <div className="pt-4 group-data-[collapsible=icon]:hidden">
+          <button className="w-full py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-[10px] font-bold text-zinc-400 hover:text-white transition-all uppercase tracking-widest">
+            Upgrade Pro
+          </button>
+        </div>
+      </SidebarFooter>
+      <SidebarRail />
+    </Sidebar>
   );
 };
 

@@ -1,4 +1,5 @@
 'use client';
+import { Logo } from '../hero-section-1';
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -60,203 +61,162 @@ export function AuthPage({ mode: initialMode = 'login' }: AuthPageProps) {
 	};
 
 	return (
-		<main className="relative md:h-screen md:overflow-hidden lg:grid lg:grid-cols-2 bg-[#09090b] text-white">
-			{/* Left Side: Branding & Decorative */}
-			<div className="bg-[#09090b] text-white relative hidden h-full flex-col border-r border-[#1a1a1a] p-10 lg:flex overflow-hidden">
-				<div className="from-[#09090b] absolute inset-0 z-10 bg-gradient-to-t to-transparent opacity-40" />
-				<div className="z-10 flex items-center gap-2">
-					<div className="p-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-2xl">
-						<Grid2x2Plus className="size-6 text-white" />
-					</div>
-					<p className="text-2xl font-bold tracking-tight text-white drop-shadow-sm">Asme</p>
-				</div>
-				<div className="z-10 mt-auto bg-white/5 backdrop-blur-xl p-8 rounded-2xl border border-white/10 shadow-2xl ring-1 ring-white/10">
-					<blockquote className="space-y-4">
-						<p className="text-2xl font-medium leading-relaxed italic text-white/90">
-							&ldquo;This platform has helped me to save time and serve my
-							clients faster than ever before. The AI-driven feedback is a game changer.&rdquo;
-						</p>
-						<footer className="flex items-center gap-3 pt-2">
-							<div className="size-11 rounded-full bg-white/10 flex items-center justify-center font-bold text-white border border-white/20">AH</div>
-							<div>
-								<p className="font-semibold text-white">Ali Hassan</p>
-								<p className="text-xs text-white/50">Senior Software Engineer</p>
-							</div>
-						</footer>
-					</blockquote>
-				</div>
-				<div className="absolute inset-0 z-0">
-					<FloatingPaths position={1} />
-					<FloatingPaths position={-1} />
-				</div>
+		<main className="relative min-h-screen flex flex-col justify-center items-center bg-white text-zinc-900">
+			{/* Background Decoration */}
+			<div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none">
+				<FloatingPaths position={1} />
+				<FloatingPaths position={-1} />
 			</div>
 
-			{/* Right Side: Form */}
-			<div className="relative flex min-h-screen flex-col justify-center p-8 lg:p-12">
-				{/* Background Gradients */}
-				<div
-					aria-hidden
-					className="absolute inset-0 isolate contain-strict -z-10 opacity-30 dark:opacity-20"
-				>
-					<div className="bg-[radial-gradient(circle_at_center,var(--color-primary)_0%,transparent_70%)] absolute top-0 right-0 h-96 w-96 -translate-y-1/2 translate-x-1/2 rounded-full blur-3xl opacity-20" />
-					<div className="bg-[radial-gradient(circle_at_center,var(--color-primary)_0%,transparent_70%)] absolute bottom-0 left-0 h-96 w-96 translate-y-1/2 -translate-x-1/2 rounded-full blur-3xl opacity-20" />
+			<Button variant="ghost" className="absolute top-8 left-8 hover:bg-zinc-100 transition-all group text-zinc-600" asChild>
+				<a href="/">
+					<ChevronLeft className='size-4 me-2 group-hover:-translate-x-1 transition-transform' />
+					Back to Home
+				</a>
+			</Button>
+
+			<div className="relative z-10 w-full max-w-[400px] px-8 py-12 space-y-8 bg-white/80 backdrop-blur-sm rounded-2xl">
+				<div className="flex flex-col items-center gap-4 mb-4">
+					<div className="p-3 bg-white rounded-xl border border-zinc-200 shadow-sm">
+						<Logo className="h-6 w-auto text-black" />
+					</div>
 				</div>
 
-				<Button variant="ghost" className="absolute top-8 left-8 hover:bg-muted/50 transition-all group" asChild>
-					<a href="/">
-						<ChevronLeft className='size-4 me-2 group-hover:-translate-x-1 transition-transform' />
-						Back to Home
-					</a>
-				</Button>
+				<div className="flex flex-col space-y-2 text-center">
+					<h1 className="text-3xl font-bold tracking-tight text-zinc-900">
+						{mode === 'login' ? 'Welcome Back' : 'Create Account'}
+					</h1>
+					<p className="text-zinc-500 text-sm">
+						{mode === 'login' 
+							? 'Enter your credentials to access your account' 
+							: 'Join us and start your AI-powered interview prep today'}
+					</p>
+				</div>
 
-				<div className="mx-auto w-full max-w-[400px] space-y-8">
-					<div className="flex items-center gap-2 lg:hidden mb-8">
-						<div className="p-1.5 bg-primary rounded-md">
-							<Grid2x2Plus className="size-5 text-primary-foreground" />
+				<div className="space-y-3">
+					<Button type="button" className="w-full py-6 flex items-center justify-center gap-3 h-auto bg-white hover:bg-zinc-50 text-zinc-900 border border-zinc-200 transition-all active:scale-[0.98]">
+						<GoogleIcon className="size-5" />
+						<span className="font-semibold">Continue with Google</span>
+					</Button>
+					<Button type="button" className="w-full py-6 flex items-center justify-center gap-3 h-auto bg-white hover:bg-zinc-50 text-zinc-900 border border-zinc-200 transition-all active:scale-[0.98]">
+						<GithubIcon className="size-5" />
+						<span className="font-semibold">Continue with GitHub</span>
+					</Button>
+				</div>
+
+				<AuthSeparator />
+
+				<form onSubmit={handleSubmit} className="space-y-5">
+					{error && (
+						<div className="bg-red-50 border border-red-100 text-red-600 text-sm p-3 rounded-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
+							<span className="size-1.5 rounded-full bg-red-600" />
+							{error}
 						</div>
-						<p className="text-xl font-bold">Asme</p>
-					</div>
+					)}
 
-					<div className="flex flex-col space-y-2">
-						<h1 className="text-3xl font-bold tracking-tight text-white">
-							Sign In or Join Now!
-						</h1>
-						<p className="text-white/60 text-sm">
-							{mode === 'login' 
-								? 'Enter your credentials to access your account' 
-								: 'Join us and start your AI-powered interview prep today'}
-						</p>
-					</div>
-
-					<div className="space-y-3">
-						<Button type="button" className="w-full py-6 flex items-center justify-center gap-3 h-auto bg-white hover:bg-white/90 text-black border-none transition-all active:scale-[0.98]">
-							<GoogleIcon className="size-5" />
-							<span className="font-semibold">Continue with Google</span>
-						</Button>
-						<Button type="button" className="w-full py-6 flex items-center justify-center gap-3 h-auto bg-white hover:bg-white/90 text-black border-none transition-all active:scale-[0.98]">
-							<GithubIcon className="size-5" />
-							<span className="font-semibold">Continue with GitHub</span>
-						</Button>
-						<Button type="button" className="w-full py-6 flex items-center justify-center gap-3 h-auto bg-white hover:bg-white/90 text-black border-none transition-all active:scale-[0.98]">
-							<AppleIcon className="size-5" />
-							<span className="font-semibold">Continue with Apple</span>
-						</Button>
-					</div>
-
-					<AuthSeparator />
-
-					<form onSubmit={handleSubmit} className="space-y-5">
-						{error && (
-							<div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm p-3 rounded-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
-								<span className="size-1.5 rounded-full bg-destructive" />
-								{error}
-							</div>
-						)}
-
-						<div className="space-y-4">
-							<AnimatePresence mode="popLayout">
-								{mode === 'signup' && (
-									<motion.div 
-										initial={{ opacity: 0, height: 0, y: -10 }}
-										animate={{ opacity: 1, height: 'auto', y: 0 }}
-										exit={{ opacity: 0, height: 0, y: -10 }}
-										className="space-y-2"
-									>
-										<label className="text-sm font-medium leading-none text-white/70">
-											Full Name
-										</label>
-										<div className="relative">
-											<Input
-												placeholder="John Doe"
-												className="ps-10 h-11 bg-white/5 border-white/10 focus:bg-white/10 text-white placeholder:text-white/30 transition-all"
-												required
-												value={formData.name}
-												onChange={(e) => setFormData({...formData, name: e.target.value})}
-											/>
-											<div className="text-white/40 absolute left-3 top-1/2 -translate-y-1/2">
-												<User className="size-4" />
-											</div>
-										</div>
-									</motion.div>
-								)}
-							</AnimatePresence>
-
-							<div className="space-y-2">
-								<label className="text-sm font-medium leading-none text-white/70">
-									Email Address
-								</label>
-								<div className="relative">
-									<Input
-										placeholder="name@example.com"
-										className="ps-10 h-11 bg-white/5 border-white/10 focus:bg-white/10 text-white placeholder:text-white/30 transition-all"
-										type="email"
-										required
-										value={formData.email}
-										onChange={(e) => setFormData({...formData, email: e.target.value})}
-									/>
-									<div className="text-white/40 absolute left-3 top-1/2 -translate-y-1/2">
-										<AtSign className="size-4" />
-									</div>
-								</div>
-							</div>
-
-							<div className="space-y-2">
-								<div className="flex items-center justify-between">
-									<label className="text-sm font-medium leading-none text-white/70">
-										Password
+					<div className="space-y-4">
+						<AnimatePresence mode="popLayout">
+							{mode === 'signup' && (
+								<motion.div 
+									initial={{ opacity: 0, height: 0, y: -10 }}
+									animate={{ opacity: 1, height: 'auto', y: 0 }}
+									exit={{ opacity: 0, height: 0, y: -10 }}
+									className="space-y-2"
+								>
+									<label className="text-sm font-medium leading-none text-zinc-700">
+										Full Name
 									</label>
-									{mode === 'login' && (
-										<a href="#" className="text-xs text-white/50 hover:text-white hover:underline font-medium">
-											Forgot password?
-										</a>
-									)}
-								</div>
-								<div className="relative">
-									<Input
-										placeholder="••••••••"
-										className="ps-10 h-11 bg-white/5 border-white/10 focus:bg-white/10 text-white placeholder:text-white/30 transition-all"
-										type="password"
-										required
-										value={formData.password}
-										onChange={(e) => setFormData({...formData, password: e.target.value})}
-									/>
-									<div className="text-white/40 absolute left-3 top-1/2 -translate-y-1/2">
-										<Lock className="size-4" />
+									<div className="relative">
+										<Input
+											placeholder="John Doe"
+											className="ps-10 h-11 bg-zinc-50 border-zinc-200 focus:bg-white text-zinc-900 placeholder:text-zinc-400 transition-all"
+											required
+											value={formData.name}
+											onChange={(e) => setFormData({...formData, name: e.target.value})}
+										/>
+										<div className="text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2">
+											<User className="size-4" />
+										</div>
 									</div>
+								</motion.div>
+							)}
+						</AnimatePresence>
+
+						<div className="space-y-2">
+							<label className="text-sm font-medium leading-none text-zinc-700">
+								Email Address
+							</label>
+							<div className="relative">
+								<Input
+									placeholder="name@example.com"
+									className="ps-10 h-11 bg-zinc-50 border-zinc-200 focus:bg-white text-zinc-900 placeholder:text-zinc-400 transition-all"
+									type="email"
+									required
+									value={formData.email}
+									onChange={(e) => setFormData({...formData, email: e.target.value})}
+								/>
+								<div className="text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2">
+									<AtSign className="size-4" />
 								</div>
 							</div>
 						</div>
 
-						<Button type="submit" className="w-full h-11 text-base font-semibold shadow-lg shadow-primary/20 active:scale-[0.98] transition-all" disabled={isLoading}>
-							{isLoading ? (
-								<>
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-									Please wait
-								</>
-							) : (
-								mode === 'login' ? 'Sign In' : 'Create Account'
-							)}
-						</Button>
-					</form>
-
-					<div className="text-center space-y-4">
-						<p className="text-sm text-white/50">
-							{mode === 'login' ? "Don't have an account?" : "Already have an account?"}{' '}
-							<button 
-								onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-								className="text-white hover:underline font-semibold"
-							>
-								{mode === 'login' ? 'Sign up' : 'Log in'}
-							</button>
-						</p>
-						
-						<p className="text-[10px] text-white/30 uppercase tracking-widest leading-relaxed">
-							By continuing, you agree to our{' '}
-							<a href="#" className="hover:text-white transition-colors">Terms</a>
-							{' '}&{' '} 
-							<a href="#" className="hover:text-white transition-colors">Privacy</a>
-						</p>
+						<div className="space-y-2">
+							<div className="flex items-center justify-between">
+								<label className="text-sm font-medium leading-none text-zinc-700">
+									Password
+								</label>
+								{mode === 'login' && (
+									<a href="#" className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline font-medium">
+										Forgot password?
+									</a>
+								)}
+							</div>
+							<div className="relative">
+								<Input
+									placeholder="••••••••"
+									className="ps-10 h-11 bg-zinc-50 border-zinc-200 focus:bg-white text-zinc-900 placeholder:text-zinc-400 transition-all"
+									type="password"
+									required
+									value={formData.password}
+									onChange={(e) => setFormData({...formData, password: e.target.value})}
+								/>
+								<div className="text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2">
+									<Lock className="size-4" />
+								</div>
+							</div>
+						</div>
 					</div>
+
+					<Button type="submit" className="w-full h-11 text-base font-semibold bg-zinc-900 text-white hover:bg-zinc-800 shadow-xl shadow-zinc-200 active:scale-[0.98] transition-all" disabled={isLoading}>
+						{isLoading ? (
+							<>
+								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+								Please wait
+							</>
+						) : (
+							mode === 'login' ? 'Sign In' : 'Create Account'
+						)}
+					</Button>
+				</form>
+
+				<div className="text-center space-y-4">
+					<p className="text-sm text-zinc-500">
+						{mode === 'login' ? "Don't have an account?" : "Already have an account?"}{' '}
+						<button 
+							onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+							className="text-zinc-900 hover:underline font-semibold"
+						>
+							{mode === 'login' ? 'Sign up' : 'Log in'}
+						</button>
+					</p>
+					
+					<p className="text-xs text-zinc-400 tracking-wide leading-relaxed">
+						By continuing, you agree to our{' '}
+						<a href="#" className="hover:text-zinc-900 transition-colors">Terms</a>
+						{' '}&{' '} 
+						<a href="#" className="hover:text-zinc-900 transition-colors">Privacy</a>
+					</p>
 				</div>
 			</div>
 		</main>
