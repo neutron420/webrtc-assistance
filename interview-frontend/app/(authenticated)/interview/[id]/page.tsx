@@ -24,12 +24,16 @@ export default function LiveInterviewRoom() {
   const [isAiProcessing, setIsAiProcessing] = useState(false);
   const [isMediaPipeLoading, setIsMediaPipeLoading] = useState(true);
   const [feedback, setFeedback] = useState<any>(null);
+  const [       realTimeTranscript, setRealTimeTranscript] = useState<string>("");
+  const [transcriptionError, setTranscriptionError] = useState<string>("");
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<BlobPart[]>([]);
   const webcamRef = useRef<Webcam>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const liveSubtitle = realTimeTranscript.trim();
+
 
   const handleCameraReady = () => {
     setIsCameraActive(true);
@@ -212,24 +216,61 @@ export default function LiveInterviewRoom() {
     detect();
   }, [faceLandmarker]);
 
+
+
   const handleMicToggle = async () => {
     if (isRecording) {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
             mediaRecorderRef.current.stop();
             mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
+            
             setIsRecording(false);
             setIsAiProcessing(true);
         }
     } else {
         setFeedback(null);
         setWpmAlert(false);
+        setRealTimeTranscript("");
+        setTranscriptionError("");
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            
             const recorder = new MediaRecorder(stream);
             
             audioChunksRef.current = [];
-            recorder.ondataavailable = (e) => {
-                if (e.data.size > 0) audioChunksRef.current.push(e.data);
+            recorder.ondataavailable = async (e) => {
+                if (e.data.size > 0) {
+                    audioChunksRef.current.push(e.data);
+                    
+                    // Live Subtitles via Audio File
+                    if (recorder.state === 'recording') {
+                        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                        const formData = new FormData();
+                        formData.append("file", audioBlob, `live_${Date.now()}.webm`);
+                        
+                        try {
+                            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${endpoints.uploadAudio}`, {
+                                method: "POST",
+                                body: formData
+                            });
+                            if (res.ok) {
+                                const data = await res.json();
+                                setRealTimeTranscript(data.text || "");
+                                setTranscriptionError("");
+                                if (data.wpm > 165) {
+                                    setWpmAlert(true);
+                                    setTimeout(() => setWpmAlert(false), 5000);
+                                }
+                            } else {
+                                const errorData = await res.json().catch(() => ({}));
+                                setTranscriptionError(errorData.detail || "Live transcription is unavailable right now.");
+                            }
+                        } catch (err) {
+                            console.error("Live transcription error:", err);
+                            setTranscriptionError("Could not reach Whisper transcription service.");
+                        }
+                    }
+                }
             };
 
             recorder.onstop = () => {
@@ -237,10 +278,11 @@ export default function LiveInterviewRoom() {
                 submitAnswerToBackend(audioBlob);
             };
 
-            recorder.start();
+            recorder.start(3000); // 3-second slices for live transcription
             mediaRecorderRef.current = recorder;
             setIsRecording(true);
         } catch (err) {
+            setTranscriptionError("Could not access microphone.");
             alert("Could not access microphone.");
         }
     }
@@ -290,6 +332,7 @@ export default function LiveInterviewRoom() {
 
       } catch (err) {
           setFeedback({ error: true, full_feedback: "Error connecting to AI Backend." });
+          setTranscriptionError("Whisper could not transcribe this answer. Check the backend API key and connectivity.");
           setIsAiProcessing(false);
       }
   };
@@ -364,6 +407,19 @@ export default function LiveInterviewRoom() {
                         onUserMedia={handleCameraReady}
                         // onUserMediaError={handleCameraError}
                     />
+                    
+                    {/* Live Subtitle Overlay */}
+                    {liveSubtitle && (
+                        <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6 pointer-events-none">
+                            <div className="mx-auto max-w-3xl rounded-2xl border border-white/10 bg-black/70 px-4 py-3 text-center shadow-2xl backdrop-blur-md">
+                                <p className="text-sm sm:text-base font-medium leading-relaxed text-white drop-shadow-lg">
+                                    {liveSubtitle}
+                                    <span className="ml-1 animate-pulse">|</span>
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                    
                     {!isCameraActive && (
                     <div className="absolute inset-0 flex items-center justify-center">
                         <div className="text-center">
@@ -397,6 +453,25 @@ export default function LiveInterviewRoom() {
                     <span className="text-[10px] uppercase tracking-[0.2em] text-foreground mb-4 text-center">Question {currentQuestionIndex + 1} of {questions.length}</span>
                     <div className="flex-1 flex flex-col justify-center items-center text-center">
                         <h2 className="text-2xl md:text-3xl text-foreground text-black leading-tight max-w-lg mb-8">"{questions[currentQuestionIndex]}"</h2>
+
+                        {isRecording && liveSubtitle && (
+                            <div className="mt-6 bg-primary/10 border border-primary/30 rounded-xl p-4 w-full text-left animate-in slide-in-from-bottom-5 max-h-32 overflow-y-auto">
+                                <h3 className="text-xs uppercase text-primary tracking-widest font-bold mb-2 flex items-center gap-2"><Zap size={14}/> Live Transcription</h3>
+                                <p className="text-sm text-foreground leading-relaxed">{liveSubtitle}<span className="animate-pulse">|</span></p>
+                            </div>
+                        )}
+
+                        {isRecording && !liveSubtitle && (
+                            <div className="mt-6 flex flex-col items-center animate-pulse">
+                                <span className="text-xs tracking-widest text-foreground uppercase">Listening...</span>
+                            </div>
+                        )}
+
+                        {transcriptionError && (
+                            <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-left">
+                                <p className="text-sm text-amber-200">{transcriptionError}</p>
+                            </div>
+                        )}
 
                         {isAiProcessing && (
                             <div className="mt-8 flex flex-col items-center animate-pulse">

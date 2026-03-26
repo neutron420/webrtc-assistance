@@ -18,8 +18,8 @@ const AppSidebar = () => {
   return (
     <aside className="hidden md:flex flex-col w-16 lg:w-56 bg-sidebar border-r border-sidebar-border min-h-screen fixed left-0 top-0 z-30">
       <div className="p-4 lg:p-6">
-        <h1 className="hidden lg:block text-foreground font-bold text-lg">Obsidian AI</h1>
-        <p className="hidden lg:block text-primary text-xs font-semibold tracking-wider mt-0.5">PREMIUM TIER</p>
+        <h1 className="hidden lg:block text-foreground font-bold text-lg">Intelliview AI</h1>
+        {/* <p className="hidden lg:block text-primary text-xs font-semibold tracking-wider mt-0.5">PREMIUM TIER</p> */}
       </div>
 
       <nav className="flex-1 mt-4 space-y-1 px-2 lg:px-3">

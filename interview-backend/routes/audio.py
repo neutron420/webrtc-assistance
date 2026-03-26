@@ -2,6 +2,7 @@ import os
 import shutil
 import json
 import logging
+import time
 from fastapi import APIRouter, UploadFile, File, HTTPException, WebSocket, WebSocketDisconnect
 from models.schema import TranscriptionResponse
 from services.whisper_service import WhisperService
@@ -73,40 +74,82 @@ async def upload_audio(file: UploadFile = File(...)):
 @router.websocket("/ws/audio-stream")
 async def audio_stream_websocket(websocket: WebSocket):
     """
-    Real-time WebSocket endpoint for live audio streaming and feedback.
+    Real-time WebSocket endpoint for live audio streaming and transcription.
     
-    Protocol:
-    - Client sends JSON messages with audio metrics
-    - Server responds with real-time feedback cues
+    Features:
+    - Buffers audio chunks to reduce API calls
+    - Implements adaptive throttling to avoid rate limits
+    - Batches transcription requests efficiently
     
     Message format from client:
     {
-        "type": "metrics_update",
-        "wpm": 165.2,
-        "filler_count": 3,
-        "eye_contact_score": 72.5,
-        "transcript_chunk": "so basically um I think..."
-    }
-    
-    Response from server:
-    {
-        "type": "feedback",
-        "cues": ["🐇 Slow down a little — you're speaking quickly."],
-        "filler_words_detected": {"um": 1, "basically": 1}
+        "type": "audio_chunk",
+        "session_id": 1,
+        "audio_data": [int16_array],
+        "timestamp": 1234567890
     }
     """
     await websocket.accept()
-    logger.info("WebSocket connection accepted for real-time feedback")
+    logger.info("WebSocket connection accepted for real-time transcription")
+
+    audio_buffer = []
+    accumulated_transcript = ""
+    last_transcription_time = 0
+    min_transcription_interval = 3  # Only transcribe every 3 seconds minimum
 
     try:
         while True:
-            # Receive metrics from frontend
             raw_data = await websocket.receive_text()
             data = json.loads(raw_data)
 
             msg_type = data.get("type", "unknown")
 
-            if msg_type == "metrics_update":
+            if msg_type == "audio_chunk":
+                # Collect audio chunks
+                audio_data = data.get("audio_data", [])
+                if audio_data:
+                    audio_buffer.extend(audio_data)
+                
+                # Transcribe only after accumulating ~3 seconds of audio (24000 samples at 8kHz)
+                # and respecting minimum interval to avoid rate limiting
+                current_time = time.time()
+                should_transcribe = (
+                    len(audio_buffer) >= 24000 and 
+                    (current_time - last_transcription_time) >= min_transcription_interval
+                )
+                
+                if should_transcribe:
+                    # Convert int16 array to bytes
+                    try:
+                        audio_bytes = bytes([b for sample in audio_buffer[:24000] for b in [sample & 0xFF, (sample >> 8) & 0xFF]])
+                        
+                        # Transcribe with retry logic built into the service
+                        transcript_chunk = await whisper_service.transcribe_audio_bytes(audio_bytes)
+                        transcript_text = transcript_chunk.get("text", "").strip()
+                        
+                        if transcript_text and transcript_text not in accumulated_transcript:
+                            accumulated_transcript += " " + transcript_text
+                            last_transcription_time = current_time
+                            
+                            # Send transcript chunk to client
+                            await websocket.send_json({
+                                "type": "transcript_chunk",
+                                "text": transcript_text,
+                                "is_final": False,
+                                "accumulated": accumulated_transcript.strip()
+                            })
+                            
+                            logger.info(f"Streamed transcript: {transcript_text}")
+                        
+                        # Remove processed samples
+                        audio_buffer = audio_buffer[24000:]
+                        
+                    except Exception as e:
+                        logger.error(f"Error transcribing chunk: {str(e)}")
+                        # Don't crash, just skip this chunk
+                        audio_buffer = audio_buffer[24000:] if len(audio_buffer) > 24000 else []
+
+            elif msg_type == "metrics_update":
                 wpm = data.get("wpm", 0)
                 filler_count = data.get("filler_count", 0)
                 eye_contact = data.get("eye_contact_score", 100)
@@ -132,45 +175,19 @@ async def audio_stream_websocket(websocket: WebSocket):
                     "current_wpm": wpm,
                 }
 
-                # FAST-PATH: Send directly back to connected user
+                # Send directly back to connected user
                 await websocket.send_json(feedback_payload)
                 
-                # SCALE-PATH: Publish to Redis Pub/Sub for cross-server observability
+                # Publish to Redis for cross-server observability
                 session_id = data.get("session_id", "unknown_session")
                 await redis_service.publish(f"live_stream_metrics:{session_id}", feedback_payload)
-
-            elif msg_type == "audio_chunk":
-                # Future: handle raw audio bytes for streaming transcription
-                logger.debug("Received audio chunk for streaming transcription")
-                await websocket.send_json({
-                    "type": "ack",
-                    "message": "Audio chunk received",
-                })
-
-            # ──────────────────────────────────────────────
-            # WebRTC Signaling Support (Offer/Answer/ICE)
-            # ──────────────────────────────────────────────
-            elif msg_type in ["offer", "answer", "ice_candidate"]:
-                session_id = data.get("session_id", "unknown_session")
-                logger.info(f"WebRTC Signaling ({msg_type}) for session {session_id}")
-                
-                # Broadcast signaling data via Redis Pub/Sub so other components 
-                # (like a recording service or another peers) can see it
-                await redis_service.publish(f"webrtc_signaling:{session_id}", data)
-                
-                # For a basic bot, we acknowledge receipt. 
-                # In P2P, we would forward this to the other participant.
-                await websocket.send_json({
-                    "type": "signaling_ack",
-                    "msg_type": msg_type,
-                    "status": "received"
-                })
 
             elif msg_type == "end_session":
                 logger.info("Client ended the session via WebSocket")
                 await websocket.send_json({
                     "type": "session_ended",
-                    "message": "Session ended. Generating final scorecard...",
+                    "message": "Session ended.",
+                    "final_transcript": accumulated_transcript.strip()
                 })
                 break
 
@@ -178,9 +195,19 @@ async def audio_stream_websocket(websocket: WebSocket):
         logger.info("WebSocket client disconnected")
     except json.JSONDecodeError:
         logger.error("Received invalid JSON on WebSocket")
-        await websocket.send_json({
-            "type": "error",
-            "message": "Invalid JSON format"
-        })
+        try:
+            await websocket.send_json({
+                "type": "error",
+                "message": "Invalid JSON format"
+            })
+        except:
+            pass
     except Exception as e:
         logger.error(f"WebSocket error: {str(e)}")
+        try:
+            await websocket.send_json({
+                "type": "error",
+                "message": str(e)
+            })
+        except:
+            pass
