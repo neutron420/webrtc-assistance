@@ -26,18 +26,11 @@ const AppSidebar = () => {
   const pathname = usePathname();
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-border/50 bg-zinc-950 text-white">
-      <SidebarHeader className="p-4">
-        <div className="flex items-center gap-3 px-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Zap className="h-5 w-5 fill-current" />
-          </div>
-          <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-            <span className="font-bold text-sm tracking-tight text-white">Obsidian AI</span>
-            <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Premium Tier</span>
-          </div>
-        </div>
-      </SidebarHeader>
+    <aside className="hidden md:flex flex-col w-16 lg:w-56 bg-sidebar border-r border-sidebar-border min-h-screen fixed left-0 top-0 z-30">
+      <div className="p-4 lg:p-6">
+        <h1 className="hidden lg:block text-foreground font-bold text-lg">Intelliview AI</h1>
+        {/* <p className="hidden lg:block text-primary text-xs font-semibold tracking-wider mt-0.5">PREMIUM TIER</p> */}
+      </div>
 
       <SidebarContent className="px-2 mt-4">
         <SidebarMenu>
