@@ -1,91 +1,144 @@
-# AI Sandbox: Next-Gen Interview & Proctoring Platform
+# AI Sandbox: Enterprise AI Interview & Proctoring Platform
 
-A production-ready platform for AI-driven mock interviews with real-time proctoring and automated feedback.
+A high-performance, production-ready system for automated AI mock interviews, real-time computer vision proctoring, and deep pedagogical analysis of candidate performance.
 
-## 🚀 Overview
-AI Sandbox transforms the way candidates prepare for technical and behavioral interviews. By combining real-time Computer Vision (CV) tracking with advanced Audio Analytics and LLM-powered evaluations, it provides a high-fidelity, secure interview experience.
-
-### Key Features
-- **Real-Time Proctoring**: Multi-face detection, device usage alerts, and eye contact tracking using MediaPipe FaceLandmarker.
-- **Advanced Audio Analytics**: Whisper-powered transcription with automated filler word detection ("um", "like", "you know") and WPM (Words Per Minute) analysis.
-- **LLM Evaluation Engine**: GPT-4o powered feedback based on the **STAR framework** (Situation, Task, Action, Result) for behavioral questions and technical accuracy for system design.
-- **Proctoring HUD**: Real-time glassmorphic visualization of eye contact, tracking confidence, and security violations.
-- **Comprehensive Scorecards**: Detailed post-interview analysis with letter grades, aggregated metrics, and personalized improvement recommendations.
+## 1. System Overview
+AI Sandbox provides an end-to-end environment where candidates can practice technical and behavioral interviews. The system simultaneously monitors visual engagement (eye contact), speech analytics (WPM and filler words), and evaluates answer quality using GPT-4o optimized against the STAR framework.
 
 ---
 
-## 🏗️ Project Architecture
+## 2. System Architecture
 
-### Frontend (`/interview-frontend`)
-Built with **Next.js 14**, **React**, and **Tailwind CSS**.
-- **`/app/interview/[id]/page.tsx`**: The core "Live Interview Studio". Integrates MediaPipe for real-time focus tracking and MediaRecorder for audio chunking.
-- **`/app/(authenticated)/scorecard/[id]/page.tsx`**: The post-interview analytics dashboard displaying transcripts, AI feedback, and performance metrics.
-- **`/lib/api-client.ts`**: Centralized API management for seamless frontend-backend communication.
+```mermaid
+graph TD
+    User([Candidate])
+    Frontend[Next.js 14 Frontend]
+    MediaPipe[MediaPipe CV Engine]
+    FastAPI[FastAPI Backend]
+    Whisper[Whisper ASR Engine]
+    LLM[GPT-4o Evaluation]
+    Redis[(Redis Cache)]
+    DB[(SQL Database)]
 
-### Backend (`/interview-backend`)
-Built with **FastAPI** (Python) and **SQLAlchemy**.
-- **`/routes`**:
-  - `evaluation.py`: Manages STAR method grading, scorecard finalization, and Individual answer submissions.
-  - `audio.py`: Handles high-speed audio transcription and real-time WebSocket metrics streaming.
-  - `session.py`: Manages session lifecycle and question generation.
-- **`/services`**:
-  - `llm_service.py`: Integration with GPT-4o for deep pedagogical analysis.
-  - `whisper_service.py`: Ultra-fast transcription via Groq Whisper Large-v3.
-  - `analytics_service.py`: The logic engine for WPM, filler words, and confidence calculations.
-  - `redis_service.py`: Used for high-performance caching and real-time state synchronization.
-- **`/models`**: Contains database schemas (`domain.py`) and Pydantic validation models (`schema.py`).
+    User <--> Frontend
+    Frontend -- Real-time CV --> MediaPipe
+    Frontend -- Audio Stream --> FastAPI
+    FastAPI <--> Whisper
+    FastAPI <--> LLM
+    FastAPI <--> Redis
+    FastAPI <--> DB
+```
 
----
-
-## 🛠️ Tech Stack
-- **Frontend**: Next.js, MediaPipe Vision (FaceLandmarker), Tailwind CSS, Lucide Icons.
-- **Backend**: FastAPI, SQLAlchemy (PostgreSQL/SQLite), Redis.
-- **AI/ML**: GPT-4o (Evaluation), Whisper Large-v3 (Transcription).
-
----
-
-## 🔒 Security & Proctoring Protocol
-The platform implements a multi-stage security protocol to ensure interview integrity:
-1.  **Signal Tracking**: The system monitors gaze persistence and face presence.
-2.  **Heuristic Detection**: Detects external device usage and multiple persons in frame.
-3.  **Automatic Termination**: On the 4th major security violation, the session is **Security Terminated** and marked as `N/A`, preventing unauthorized completion.
-4.  **Unified Alerts**: A prioritized notification system provides instant feedback to the user on their proctoring status.
+### Component Breakdown
+- **Frontend Layer**: Built with Next.js 14, utilizing React Hooks for state management of live media streams and real-time proctoring HUDs.
+- **Vision Engine**: Client-side execution of MediaPipe FaceLandmarker to ensure sub-100ms latency for eye-tracking and multi-face detection.
+- **Backend API**: A modular FastAPI service orchestrated to handle concurrent audio processing, database transactions, and LLM completions.
+- **Analytics Layer**: Specialized Python services for pattern-based filler word detection and word-per-minute (WPM) calculation from transcription metadata.
 
 ---
 
-## 🚦 Getting Started
+## 3. Database Schema (ER Diagram)
 
-### 1. Requirements
-- Node.js (Bun or NPM)
+```mermaid
+erDiagram
+    USERS ||--o{ SESSIONS : "starts"
+    SESSIONS ||--o{ ANSWERS : "contains"
+
+    USERS {
+        int id PK
+        string name
+        string email
+        string password_hash
+        datetime created_at
+    }
+
+    SESSIONS {
+        int id PK
+        int user_id FK
+        string interview_type
+        string role
+        string difficulty
+        string company_target
+        text questions_json
+        float avg_wpm
+        int total_filler_words
+        float avg_eye_contact
+        string overall_grade
+        datetime created_at
+    }
+
+    ANSWERS {
+        int id PK
+        int session_id FK
+        int question_index
+        text question_text
+        text transcript
+        float wpm
+        int filler_word_count
+        float eye_contact_score
+        float relevance_score
+        float completeness_score
+        text star_structure_feedback
+        string technical_grade
+        text full_feedback
+    }
+```
+
+---
+
+## 4. Key Functional Features
+
+### Real-Time Proctoring and Gaze Tracking
+The vision system utilizes the 478 landmarks of the MediaPipe FaceLandmarker model.
+- **Iris Tracking**: Calculates gaze persistence by tracking iris position relative to the inner and outer eye corners.
+- **Multi-face Detection**: Prevents session tampering by identifying multiple skeletal face structures in the frame.
+- **Device Usage Detection**: Heuristic-based tracking of head posture and gaze to identify potential mobile device usage or external reading.
+
+### Speech and Audio Analytics
+- **Transcription**: High-fidelity conversion of audio to text via OpenAI/Groq Whisper Large-v3.
+- **Pacing Analysis**: Calculation of WPM (Words Per Minute) based on transcription word count and audio segment duration.
+- **Filler Word Detection**: Pattern matching against a comprehensive library of filler words (e.g., "um", "like", "actually") to evaluate speech clarity.
+
+### Pedagogical LLM Evaluation
+The platform leverages GPT-4o to analyze candidate responses against the STAR Framework:
+1.  **Situation & Task**: Evaluates if the context was clearly established.
+2.  **Action**: Documents the specific steps taken by the candidate.
+3.  **Result**: Quantifies or defines the success of the outcome.
+4.  **Technical Accuracy**: Factual grading of technical concepts, algorithms, and system design patterns.
+
+---
+
+## 5. Security Protocol & Session Termination
+For high-stakes mock interviews, the system enforces a strict Security Protocol:
+- **Violation Logging**: Each proctoring breach (e.g., looking away, multi-face) is logged with a timestamp and violation count.
+- **Escalation Policy**: Upon reaching the 4th major violation, the session state is locked and marked as "Security Terminated".
+- **Finalization**: Terminated sessions are assigned a grade of "N/A" and redirect the user to a security summary report to maintain integrity.
+
+---
+
+## 6. Installation and Setup
+
+### Prerequisites
+- Node.js 18+ (Bun recommended)
 - Python 3.10+
-- OpenAI / Groq API Keys
+- OpenAI or Groq API Keys
 
-### 2. Backend Setup
+### Backend Execution
 ```bash
 cd interview-backend
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
-# Ensure .env is configured
 python main.py
 ```
 
-### 3. Frontend Setup
+### Frontend Execution
 ```bash
 cd interview-frontend
 bun install
-# Configure NEXT_PUBLIC_API_URL in .env
 bun run dev
 ```
 
 ---
 
-## 📊 Development Milestones (Day 3 & 4)
-- ✅ Integrated MediaPipe FaceLandmarker for iris-tracking based eye contact metrics.
-- ✅ Implemented regex-based filler word detection and WPM analysis from Whisper timestamps.
-- ✅ Developed the end-to-end evaluation pipeline from raw audio to structured STAR feedback.
-- ✅ Hardened proctoring logic with unified UI alerts and session termination protocols.
-
----
-
-© 2026 AI Sandbox - Finalizing the future of interview preparation.
+*© 2026 AI Sandbox - Intelligent Interview Analytics Platform.*
