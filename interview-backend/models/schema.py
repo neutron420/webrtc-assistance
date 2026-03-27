@@ -134,6 +134,7 @@ class AnswerSubmission(BaseModel):
 class ScorecardResponse(BaseModel):
     session_id: int
     question_text: str
+    transcript: Optional[str] = None
     relevance_score: float
     completeness_score: float
     star_structure_feedback: str

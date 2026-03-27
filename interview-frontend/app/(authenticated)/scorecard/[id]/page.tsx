@@ -133,7 +133,7 @@ export default function PostInterviewScorecard({ params }: { params: Promise<{ i
                         <AlertTriangle className="absolute top-4 right-4 w-4 h-4 text-muted-foreground opacity-30" />
                         <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest block mb-2">Filler Words</span>
                         <div className="flex items-baseline gap-2">
-                            <span className="text-4xl font-black text-foreground">{data?.answers?.[0]?.filler_count || 0}</span>
+                            <span className="text-4xl font-black text-foreground">{data?.answers?.[0]?.filler_word_count || 0}</span>
                             <span className="text-[10px] font-bold text-primary uppercase tracking-wider">Detected</span>
                         </div>
                     </div>

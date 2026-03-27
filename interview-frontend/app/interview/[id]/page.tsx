@@ -99,6 +99,7 @@ export default function LiveInterviewRoom() {
   const [eyeContactAlert, setEyeContactAlert] = useState(false);
   const [smileCue, setSmileCue] = useState(false);
   const [violations, setViolations] = useState(0);
+  const [isTerminating, setIsTerminating] = useState(false);
   const violationStartRef = useRef<number | null>(null);
 
   const scoreRef = useRef(eyeContactScore);
@@ -115,6 +116,8 @@ export default function LiveInterviewRoom() {
   useEffect(() => {
     // SECURITY ENGINE v3.5 (Device & Signal Monitoring)
     const monitor = setInterval(() => {
+        if (isTerminating) return;
+        
         const isSuspect = (scoreRef.current < 60 || !faceStateRef.current || multiFaceRef.current || deviceDetected);
         
         if (isSuspect) {
@@ -138,14 +141,17 @@ export default function LiveInterviewRoom() {
     }, 200); 
     
     return () => clearInterval(monitor);
-  }, [faceLandmarker, deviceDetected]); // Re-run if device state changes to catch it immediately
+  }, [faceLandmarker, deviceDetected, isTerminating]); // Added isTerminating to deps
 
   useEffect(() => {
-    if (violations >= 4) {
-        alert("SECURITY TERMINATION: Total violations exceeded. Session closed.");
-        handleEndInterview("N/A");
+    if (violations >= 4 && !isTerminating) {
+        setIsTerminating(true);
+        // Short delay to show the termination UI before redirecting
+        setTimeout(() => {
+            handleEndInterview("N/A");
+        }, 3000);
     }
-  }, [violations]);
+  }, [violations, isTerminating]);
 
   useEffect(() => {
     // 0. Check if session is already finalized (Security/Stability Task)
@@ -493,60 +499,59 @@ export default function LiveInterviewRoom() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
-        {wpmAlert && (
-            <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] animate-bounce">
-                <div className="bg-amber-500 text-black px-6 py-3 rounded-full font-bold flex items-center gap-3 shadow-2xl">
-                    <AlertTriangle size={20} />
-                    <span>SLOW DOWN: You are speaking very quickly!</span>
-                </div>
-            </div>
-        )}
-
-        {eyeContactAlert && (
-            <div className="fixed top-36 left-1/2 -translate-x-1/2 z-[60] animate-pulse">
-                <div className="bg-background text-foreground px-6 py-3 rounded-full font-bold flex flex-col items-center gap-1 shadow-2xl border-2 border-red-500">
-                    <div className="flex items-center gap-3">
-                        <Eye size={20} className="text-red-500" />
-                        <span className="text-red-500">LOW SIGNAL / EYE CONTACT!</span>
+        {/* UNIFIED NOTIFICATION CENTER (Priority-Based) */}
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] w-full max-w-md pointer-events-none px-4">
+            <div className="flex flex-col items-center gap-4">
+                {isTerminating ? (
+                    <div className="bg-red-600 text-white px-8 py-6 rounded-[2rem] font-bold flex flex-col items-center gap-3 shadow-[0_0_80px_rgba(239,68,68,0.7)] border-4 border-white/30 animate-in zoom-in-95 duration-500 w-full text-center">
+                        <AlertTriangle size={48} className="animate-pulse" />
+                        <span className="text-2xl tracking-tighter uppercase font-black">Session Terminated</span>
+                        <span className="text-sm opacity-80 font-medium">Security protocol triggered. Redirecting...</span>
                     </div>
-                    <span className="text-xs uppercase tracking-widest text-red-400">Violation {violations}/3 Recorded</span>
-                    <span className="text-[10px] text-muted-foreground">Session ends on 4th violation</span>
-                </div>
-            </div>
-        )}
-
-        {smileCue && (
-            <div className="fixed top-52 left-1/2 -translate-x-1/2 z-[60]">
-                <div className="bg-[#6ffbbe] text-black px-6 py-2 rounded-full font-bold flex items-center gap-3 shadow-2xl">
-                    <Smile size={20} />
-                    <span>NICE! A smile builds rapport.</span>
-                </div>
-            </div>
-        )}
-
-        {multiFaceDetected && (
-            <div className="fixed top-64 left-1/2 -translate-x-1/2 z-[70] animate-bounce">
-                <div className="bg-red-600 text-white px-8 py-4 rounded-2xl font-bold flex flex-col items-center gap-2 shadow-[0_0_50px_rgba(239,68,68,0.5)] border-2 border-white/20">
-                    <div className="flex items-center gap-3">
-                        <AlertTriangle size={24} />
-                        <span className="text-lg">MULTI-FACE DETECTED!</span>
+                ) : multiFaceDetected ? (
+                    <div className="bg-red-600 text-white px-8 py-4 rounded-2xl font-bold flex flex-col items-center gap-2 shadow-[0_0_50px_rgba(239,68,68,0.5)] border-2 border-white/20 animate-bounce w-full">
+                        <div className="flex items-center gap-3">
+                            <AlertTriangle size={24} />
+                            <span className="text-lg">MULTI-FACE DETECTED!</span>
+                        </div>
+                        <span className="text-xs opacity-80 underline underline-offset-4">Only one person allowed during session.</span>
                     </div>
-                    <span className="text-xs opacity-80 underline underline-offset-4">Only one person allowed during session.</span>
-                </div>
-            </div>
-        )}
-
-        {deviceDetected && (
-            <div className="fixed top-80 left-1/2 -translate-x-1/2 z-[75] animate-pulse">
-                <div className="bg-amber-600 text-white px-8 py-4 rounded-2xl font-bold flex flex-col items-center gap-2 shadow-[0_0_50px_rgba(245,158,11,0.5)] border-2 border-white/20">
-                    <div className="flex items-center gap-3">
-                        <Smartphone size={24} />
-                        <span className="text-lg">DEVICE DETECTED!</span>
+                ) : deviceDetected ? (
+                    <div className="bg-amber-600 text-white px-8 py-4 rounded-2xl font-bold flex flex-col items-center gap-2 shadow-[0_0_50px_rgba(245,158,11,0.5)] border-2 border-white/20 animate-pulse w-full">
+                        <div className="flex items-center gap-3">
+                            <Smartphone size={24} />
+                            <span className="text-lg">DEVICE DETECTED!</span>
+                        </div>
+                        <span className="text-xs opacity-80 uppercase tracking-widest">External device usage is prohibited.</span>
                     </div>
-                    <span className="text-xs opacity-80 uppercase tracking-widest">External device usage is prohibited.</span>
-                </div>
+                ) : eyeContactAlert ? (
+                    <div className="bg-[#131315]/95 text-foreground px-8 py-4 rounded-2xl font-bold flex flex-col items-center gap-1 shadow-2xl border-2 border-red-500/50 backdrop-blur-xl animate-pulse w-full">
+                        <div className="flex items-center gap-3">
+                            <Eye size={20} className="text-red-500" />
+                            <span className="text-red-500">LOW SIGNAL / EYE CONTACT!</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                            <div className="flex gap-1.5">
+                                {[1, 2, 3].map(i => (
+                                    <div key={i} className={`w-3 h-1.5 rounded-full ${violations >= i ? 'bg-red-500' : 'bg-red-500/20'}`}></div>
+                                ))}
+                            </div>
+                            <span className="text-[10px] uppercase tracking-widest text-red-400/80 font-black ml-2">Warning {violations}/3</span>
+                        </div>
+                    </div>
+                ) : wpmAlert ? (
+                    <div className="bg-amber-500 text-black px-8 py-4 rounded-full font-bold flex items-center gap-3 shadow-2xl animate-in slide-in-from-top-10">
+                        <AlertTriangle size={20} />
+                        <span className="text-sm tracking-tight">SLOW DOWN: Speaking too fast!</span>
+                    </div>
+                ) : smileCue ? (
+                    <div className="bg-[#6ffbbe] text-black px-8 py-4 rounded-full font-bold flex items-center gap-3 shadow-2xl animate-in slide-in-from-top-10">
+                        <Smile size={20} />
+                        <span className="text-sm tracking-tight">Keep it up! Great rapport.</span>
+                    </div>
+                ) : null}
             </div>
-        )}
+        </div>
 
         <nav className="sticky top-0 w-full z-30 bg-[#131315]/80 backdrop-blur-xl border-b border-white/5 shadow-xl">
             <div className="flex justify-between items-center h-16 px-6 w-full max-w-screen-2xl mx-auto">

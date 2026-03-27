@@ -99,6 +99,7 @@ async def submit_answer(req: AnswerSubmission, db: AsyncSession = Depends(get_db
     return ScorecardResponse(
         session_id=req.session_id,
         question_text=req.question_text,
+        transcript=req.transcript,
         relevance_score=evaluation["relevance_score"],
         completeness_score=evaluation["completeness_score"],
         star_structure_feedback=evaluation["star_structure_feedback"],
@@ -206,6 +207,7 @@ async def finalize_session(session_id: int, req: Optional[FinalizeRequest] = Non
         ScorecardResponse(
             session_id=session_id,
             question_text=a.question_text,
+            transcript=a.transcript,
             relevance_score=a.relevance_score,
             completeness_score=a.completeness_score,
             star_structure_feedback=a.star_structure_feedback,
@@ -268,6 +270,7 @@ async def get_scorecard(session_id: int, db: AsyncSession = Depends(get_db)):
         ScorecardResponse(
             session_id=session_id,
             question_text=a.question_text,
+            transcript=a.transcript,
             relevance_score=a.relevance_score,
             completeness_score=a.completeness_score,
             star_structure_feedback=a.star_structure_feedback,
