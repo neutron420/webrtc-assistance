@@ -25,10 +25,9 @@ async def upload_audio(file: UploadFile = File(...)):
     Receives an audio file, transcribes it using Whisper,
     and returns the transcript with filler word analysis and WPM.
     """
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="No filename provided")
-
-    file_location = os.path.join(UPLOAD_DIR, file.filename)
+    # SANITIZE FILENAME (Security Patch: Prevent Path Traversal)
+    safe_filename = os.path.basename(file.filename) if file.filename else f"audio_{int(time.time())}.webm"
+    file_location = os.path.join(UPLOAD_DIR, safe_filename)
 
     try:
         # Save the uploaded file temporarily
