@@ -212,6 +212,38 @@ const Sidebar = React.forwardRef<
       )
     }
 
+    if (variant === "inset") {
+      return (
+        <div
+          ref={ref}
+          className="group peer hidden h-svh shrink-0 text-sidebar-foreground transition-[width] duration-200 ease-linear md:block"
+          data-state={state}
+          data-collapsible={state === "collapsed" ? collapsible : ""}
+          data-variant={variant}
+          data-side={side}
+          style={
+            {
+              width:
+                state === "collapsed"
+                  ? "calc(var(--sidebar-width-icon) + 1rem + 2px)"
+                  : "var(--sidebar-width)",
+            } as React.CSSProperties
+          }
+          {...props}
+        >
+          <div
+            data-sidebar="sidebar"
+            className={cn(
+              "sticky top-0 flex h-svh w-full flex-col",
+              className
+            )}
+          >
+            {children}
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div
         ref={ref}
@@ -227,7 +259,7 @@ const Sidebar = React.forwardRef<
             "duration-200 relative h-svh w-[--sidebar-width] bg-transparent transition-[width] ease-linear",
             "group-data-[collapsible=offcanvas]:w-0",
             "group-data-[side=right]:rotate-180",
-            variant === "floating" || variant === "inset"
+            variant === "floating"
               ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
               : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]"
           )}
@@ -239,7 +271,7 @@ const Sidebar = React.forwardRef<
               ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
               : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
             // Adjust the padding for floating and inset variants.
-            variant === "floating" || variant === "inset"
+            variant === "floating"
               ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
               : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l",
             className

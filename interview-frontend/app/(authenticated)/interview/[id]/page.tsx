@@ -377,7 +377,7 @@ export default function LiveInterviewRoom() {
   };
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-background">
+    <div className="flex min-h-full min-w-0 flex-col bg-background">
         {wpmAlert && (
             <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] animate-bounce">
                 <div className="bg-amber-500 text-black px-6 py-3 rounded-full font-bold flex items-center gap-3 shadow-2xl">
@@ -405,7 +405,7 @@ export default function LiveInterviewRoom() {
             </div>
         )}
 
-        <nav className="sticky top-0 w-full z-30 bg-[#131315]/80 backdrop-blur-xl border-b border-white/5 shadow-xl">
+        {/* <nav className="sticky top-0 w-full z-30 bg-[#131315]/80 backdrop-blur-xl border-b border-white/5 shadow-xl">
             <div className="flex justify-between items-center h-16 px-6 w-full max-w-screen-2xl mx-auto">
                 <div className="flex items-center gap-10">
                     <span className="font-bold text-white tracking-tighter">Live Interview Studio</span>
@@ -413,21 +413,21 @@ export default function LiveInterviewRoom() {
                     <span className="text-[10px] text-[#c6c6c6] uppercase tracking-widest hidden sm:inline-block">Session: {sessionId}</span>
                 </div>
             </div>
-        </nav>
+        </nav> */}
 
-        <main className="flex-grow pt-8 pb-32 px-6 flex flex-col xl:flex-row gap-6 relative max-h-[calc(100vh-64px)] overflow-y-auto">
+        <main className="relative flex min-w-0 flex-1 flex-col gap-6 px-3 py-4 sm:px-4 md:px-6 xl:flex-row xl:items-stretch">
             <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-3/4 h-1/2 bg-[#6ffbbe]/5 blur-[120px] rounded-full pointer-events-none -z-10"></div>
 
             {/* Left: User Webcam Feed */}
-            <section className="flex-1 relative min-h-[400px] flex flex-col">
-                <div className="w-full flex-grow rounded-2xl overflow-hidden bg-foreground/10 border border-border shadow-2xl relative">
+            <section className="relative flex min-h-[320px] flex-1 flex-col xl:min-h-[640px]">
+                <div className="relative flex min-h-[320px] flex-1 rounded-2xl border border-border bg-foreground/10 shadow-2xl overflow-hidden">
                     <Webcam
                         audio={false}
                         mirrored={true}
                         ref={webcamRef}
                         className="w-full h-full object-cover"
                         onUserMedia={handleCameraReady}
-                        // onUserMediaError={handleCameraError}
+                        onUserMediaError={handleCameraError}
                     />
                     <canvas
                         ref={canvasRef}
@@ -475,8 +475,8 @@ export default function LiveInterviewRoom() {
             </section>
 
             {/* Right: AI Interviewer Panel */}
-            <section className="flex-1 flex flex-col gap-6 h-full">
-                <div className="bg-card rounded-2xl p-8 border border-border flex flex-col flex-1 relative overflow-hidden shadow-2xl">
+            <section className="flex flex-1 flex-col gap-6 xl:min-h-[640px]">
+                <div className="relative flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-2xl sm:p-8">
                     <span className="text-[10px] uppercase tracking-[0.2em] text-foreground mb-4 text-center">Question {currentQuestionIndex + 1} of {questions.length}</span>
                     <div className="flex-1 flex flex-col justify-center items-center text-center">
                         <h2 className="text-2xl md:text-3xl text-foreground text-black leading-tight max-w-lg mb-8">"{questions[currentQuestionIndex]}"</h2>
@@ -525,8 +525,8 @@ export default function LiveInterviewRoom() {
             </section>
         </main>
 
-        <footer className="fixed bottom-6 right-0 left-0 lg:left-20 flex items-center justify-center z-50 pointer-events-none">
-            <div className="bg-[#1c1b1d]/90 backdrop-blur-xl border border-[#474747]/50 rounded-full px-6 py-4 flex items-center gap-6 shadow-2xl pointer-events-auto transition-transform hover:-translate-y-1">
+        <footer className="sticky bottom-0 z-40 mt-auto px-3 pb-3 pt-2 sm:px-4 md:px-6">
+            <div className="mx-auto flex w-full max-w-3xl flex-col items-center justify-center gap-3 rounded-3xl border border-[#474747]/50 bg-[#1c1b1d]/90 px-4 py-4 shadow-2xl backdrop-blur-xl sm:flex-row sm:gap-6 sm:px-6">
                 {!isRecording ? (
                     <button onClick={handleMicToggle} className="h-12 w-48 rounded-full bg-white text-black font-bold text-sm uppercase tracking-widest hover:bg-gray-200 transition-colors flex items-center justify-center gap-3">
                         <Mic size={18} /> Start Answering
@@ -536,7 +536,7 @@ export default function LiveInterviewRoom() {
                         <Video size={18} /> Finish Answer
                     </button>
                 )}
-                <div className="h-8 w-px bg-background/70"></div>
+                <div className="hidden h-8 w-px bg-background/70 sm:block"></div>
                 <button onClick={handleEndInterview} className="px-6 py-2 w-48 h-12 text-xs font-bold text-red-400 uppercase tracking-widest hover:bg-[#ffb4ab]/10 rounded-full transition-colors">
                     End Interview
                 </button>

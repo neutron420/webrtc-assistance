@@ -11,16 +11,19 @@ export default function AuthenticatedLayout({
 }) {
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-zinc-50/50 text-zinc-900">
+      <div className="flex min-h-svh w-full overflow-hidden bg-zinc-50/80 text-zinc-900">
         <AppSidebar />
-        <SidebarInset className="flex flex-col flex-1">
-          <header className="flex h-14 items-center gap-4 border-b bg-white px-6 lg:h-[60px]">
-            <SidebarTrigger className="-ml-1" />
-            <div className="flex-1">
-              <h1 className="text-sm font-semibold text-zinc-900 uppercase tracking-wider">Dashboard</h1>
+        <SidebarInset className="min-w-0 overflow-hidden transition-[width,margin] duration-200 ease-linear">
+            <header className=" top-0 z-20 h-14 flex items-center gap-3 border-b border-zinc-200/80 bg-white/90 px-3 backdrop-blur sm:h-16 sm:px-4 lg:px-6">
+            <SidebarTrigger className="h-9 w-9 rounded-lg border border-zinc-200 text-zinc-700 hover:bg-zinc-100" />
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-sm font-semibold uppercase tracking-[0.24em] text-zinc-900 sm:text-[13px]">
+                Dashboard
+              </h1>
+              <p className="truncate text-xs text-zinc-500 sm:hidden">Interview workspace</p>
             </div>
           </header>
-          <main className="flex-1 p-4 md:p-6 lg:p-8">
+          <main className=" min-w-0 flex-1 px-3 py-4 sm:px-4 sm:py-5 md:px-6 lg:px-8 lg:py-6">
             {children}
           </main>
         </SidebarInset>
