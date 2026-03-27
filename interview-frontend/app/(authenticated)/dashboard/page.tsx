@@ -115,6 +115,9 @@ export default function SetupDashboard() {
                 <option value="Frontend Engineer">Frontend Engineer</option>
                 <option value="Backend Engineer">Backend Engineer</option>
                 <option value="Fullstack Engineer">Fullstack Engineer</option>
+                <option value="ML Engineer">ML Engineer</option>
+                <option value="Data Scientist">Data Scientist</option>
+                <option value="DevOps Engineer">DevOps Engineer</option>
                 <option value="Product Manager">Product Manager</option>
               </select>
             </div>
@@ -133,7 +136,12 @@ export default function SetupDashboard() {
                 <option value="meta">Meta</option>
                 <option value="amazon">Amazon</option>
                 <option value="apple">Apple</option>
+                <option value="netflix">Netflix</option>
                 <option value="microsoft">Microsoft</option>
+                <option value="uber">Uber</option>
+                <option value="stripe">Stripe</option>
+                <option value="airbnb">Airbnb</option>
+                <option value="openai">OpenAI</option>
                 <option value="startup">Startup</option>
                 <option value="general">General</option>
               </select>

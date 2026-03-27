@@ -4,10 +4,6 @@ from datetime import datetime
 from enum import Enum
 
 
-# ──────────────────────────────────────────────
-# Enums for interview configuration
-# ──────────────────────────────────────────────
-
 class InterviewType(str, Enum):
     BEHAVIORAL = "behavioral"
     TECHNICAL_DSA = "technical_dsa"
@@ -34,18 +30,9 @@ class CompanyTarget(str, Enum):
     GENERAL = "general"
 
 
-# ──────────────────────────────────────────────
-# Health Check
-# ──────────────────────────────────────────────
-
 class HealthCheckResponse(BaseModel):
     status: str
     message: str
-
-
-# ──────────────────────────────────────────────
-# User Auth & Profile
-# ──────────────────────────────────────────────
 
 class UserCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
@@ -61,15 +48,15 @@ class UserProfileResponse(BaseModel):
     name: str
     email: str
     total_sessions: int = 0
+    access_token: Optional[str] = None
+    token_type: Optional[str] = "bearer"
     created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
 
 
-# ──────────────────────────────────────────────
-# Session Setup
-# ──────────────────────────────────────────────
+
 
 class SessionSetupRequest(BaseModel):
     """User picks interview type, role, difficulty, and optional company target."""
@@ -90,9 +77,6 @@ class SessionSetupResponse(BaseModel):
     message: str
 
 
-# ──────────────────────────────────────────────
-# Audio Transcription
-# ──────────────────────────────────────────────
 
 class TranscriptionResponse(BaseModel):
     text: str
@@ -103,9 +87,7 @@ class TranscriptionResponse(BaseModel):
     filler_word_count: Optional[int] = None
 
 
-# ──────────────────────────────────────────────
-# Eye Contact / CV Metrics from Frontend
-# ──────────────────────────────────────────────
+
 
 class EyeContactUpdate(BaseModel):
     """Frontend MediaPipe sends these metrics periodically."""
@@ -115,10 +97,6 @@ class EyeContactUpdate(BaseModel):
     posture_score: Optional[float] = Field(None, ge=0.0, le=100.0)
     facial_expression: Optional[str] = None
 
-
-# ──────────────────────────────────────────────
-# Evaluation / Scorecard
-# ──────────────────────────────────────────────
 
 class AnswerSubmission(BaseModel):
     """Submit a single answer for evaluation."""
@@ -162,9 +140,6 @@ class FullScorecardResponse(BaseModel):
     recommendations: List[str]
 
 
-# ──────────────────────────────────────────────
-# Progress Tracking
-# ──────────────────────────────────────────────
 
 class SessionSummary(BaseModel):
     session_id: int
@@ -188,10 +163,6 @@ class ProgressResponse(BaseModel):
     strengths: List[str]
     weaknesses: List[str]
 
-
-# ──────────────────────────────────────────────
-# Personalized Study Plan
-# ──────────────────────────────────────────────
 
 class StudyPlanRequest(BaseModel):
     user_id: int

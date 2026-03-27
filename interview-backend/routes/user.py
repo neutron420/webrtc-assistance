@@ -8,6 +8,7 @@ from fastapi import Depends
 from models.database import get_db
 from models.domain import UserProfile
 from models.schema import UserCreateRequest, UserLoginRequest, UserProfileResponse
+from services.auth_service import auth_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -39,11 +40,17 @@ async def register_user(req: UserCreateRequest, db: AsyncSession = Depends(get_d
     await db.refresh(user)
 
     logger.info(f"Registered new user: {user.email} (id={user.id})")
+    
+    # Generate Token
+    token = auth_service.create_access_token({"sub": str(user.id)})
+    
     return UserProfileResponse(
         id=user.id,
         name=user.name,
         email=user.email,
         total_sessions=0,
+        access_token=token,
+        token_type="bearer",
         created_at=user.created_at
     )
 
@@ -73,11 +80,17 @@ async def login_user(req: UserLoginRequest, db: AsyncSession = Depends(get_db)):
     session_count = len(session_result.scalars().all())
 
     logger.info(f"User logged in: {user.email}")
+    
+    # Generate Token
+    token = auth_service.create_access_token({"sub": str(user.id)})
+
     return UserProfileResponse(
         id=user.id,
         name=user.name,
         email=user.email,
         total_sessions=session_count,
+        access_token=token,
+        token_type="bearer",
         created_at=user.created_at
     )
 

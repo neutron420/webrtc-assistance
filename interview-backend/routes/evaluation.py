@@ -17,6 +17,8 @@ from models.schema import (
 from services.llm_service import llm_service
 from services.analytics_service import analytics_service
 from services.redis_service import redis_service
+from services.auth_service import auth_service
+from models.domain import UserProfile, SessionLog, AnswerLog
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -142,7 +144,12 @@ async def update_eye_contact(req: EyeContactUpdate, db: AsyncSession = Depends(g
 
 
 @router.post("/finalize/{session_id}", response_model=FullScorecardResponse)
-async def finalize_session(session_id: int, req: Optional[FinalizeRequest] = None, db: AsyncSession = Depends(get_db)):
+async def finalize_session(
+    session_id: int, 
+    req: Optional[FinalizeRequest] = None, 
+    db: AsyncSession = Depends(get_db),
+    current_user: UserProfile = Depends(auth_service.get_current_user)
+):
     """
     Finalizes a session and generates the comprehensive post-interview scorecard.
     

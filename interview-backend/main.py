@@ -12,9 +12,7 @@ from models.database import engine
 from models.domain import Base
 from services.redis_service import redis_service
 
-# ──────────────────────────────────────────────
-# Configure logging for debugging
-# ──────────────────────────────────────────────
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -22,9 +20,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# ──────────────────────────────────────────────
-# Application lifespan (startup/shutdown events)
-# ──────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Handles startup and shutdown events."""
@@ -68,20 +63,16 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # ──────────────────────────────────────────────
-    # CORS Middleware — allow frontend to connect
-    # ──────────────────────────────────────────────
+    origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001,http://localhost:3002").split(",")
+    
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # In production, restrict to actual frontend domains
+        allow_origins=origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
-    # ──────────────────────────────────────────────
-    # Register all routers
-    # ──────────────────────────────────────────────
     app.include_router(user.router,       prefix="/user",      tags=["👤 User Auth & Profile"])
     app.include_router(session.router,    prefix="/session",   tags=["🎯 Interview Sessions"])
     app.include_router(audio.router,      prefix="",           tags=["🎤 Audio Processing"])
@@ -89,9 +80,6 @@ def create_app() -> FastAPI:
     app.include_router(progress.router,   prefix="/progress",  tags=["📈 Progress Tracking"])
     app.include_router(seed.router,       prefix="/seed",      tags=["🌱 Demo Seeding"])
 
-    # ──────────────────────────────────────────────
-    # Health check endpoint
-    # ──────────────────────────────────────────────
     @app.get("/", response_model=HealthCheckResponse, tags=["❤️ Health"])
     async def root():
         """Simple health check to verify the server is running."""
@@ -103,8 +91,6 @@ def create_app() -> FastAPI:
 
     return app
 
-
-# Create the app instance
 app = create_app()
 
 if __name__ == "__main__":
