@@ -14,7 +14,8 @@ export default function SetupDashboard() {
       interviewType: 'behavioral',
       role: 'Frontend Engineer',
       company: 'google',
-      difficulty: 'medium'
+      difficulty: 'medium',
+      numQuestions: 5
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +55,7 @@ export default function SetupDashboard() {
                 role: formData.role,
                 difficulty: formData.difficulty,
                 company_target: formData.company,
-                num_questions: 3
+                num_questions: formData.numQuestions
             })
         });
 
@@ -160,6 +161,22 @@ export default function SetupDashboard() {
                 <option value="easy">Easy</option>
                 <option value="medium">Medium</option>
                 <option value="hard">Hard</option>
+              </select>
+            </div>
+
+            {/* Session Length */}
+            <div className="space-y-3">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+                Session Length (Questions)
+              </label>
+              <select 
+                className="w-full bg-secondary/50 border border-border rounded-xl py-3 px-4 text-foreground appearance-none focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer"
+                value={formData.numQuestions}
+                onChange={(e) => setFormData({...formData, numQuestions: parseInt(e.target.value)})}
+              >
+                {[1, 2, 3, 5, 7, 10].map(n => (
+                    <option key={n} value={n}>{n} Questions</option>
+                ))}
               </select>
             </div>
           </div>

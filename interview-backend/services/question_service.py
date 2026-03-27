@@ -679,6 +679,10 @@ COMPANY_QUESTION_BANKS = {
                 "Describe a time you mentored someone.",
                 "Tell me about a time you failed and what you learned.",
                 "How do you handle working with difficult stakeholders?",
+                "Describe a time you had to learn a complex topic in a short timeframe.",
+                "Tell me about a time you had to adapt to a major change in project scope.",
+                "How do you handle situations where your technical opinion is ignored?",
+                "Describe a time you improved a teammate's performance via feedback.",
             ],
             "hard": [
                 "Critical feedback experience.",
@@ -705,6 +709,11 @@ COMPANY_QUESTION_BANKS = {
                 "Validate BST.",
                 "Combination Sum.",
                 "Matrix Spiral Order.",
+                "Implement a Trie (Prefix Tree).",
+                "Design a Circular Queue.",
+                "Max Area of Island.",
+                "Design a Min Stack.",
+                "Binary Tree Vertical Order Traversal.",
             ],
             "hard": [
                 "N-Queens.",
@@ -726,6 +735,10 @@ COMPANY_QUESTION_BANKS = {
                 "Design a Twitter-like feed.",
                 "Design a simple e-commerce cart.",
                 "Design an event-driven notification system.",
+                "Design a distributed rate limiter.",
+                "Design a global ID generation service (Snowflake).",
+                "Design a configuration management service.",
+                "Design a simple web crawler.",
             ],
             "hard": [
                 "Design a distributed message queue.",
