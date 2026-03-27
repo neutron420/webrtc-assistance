@@ -1,8 +1,10 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Headphones, Video, BarChart3, Settings, HelpCircle, LayoutDashboard, Zap } from "lucide-react";
+import { Logo } from "@/components/hero-section-1";
 import { cn } from "@/lib/utils";
 import {
   Sidebar,
@@ -13,6 +15,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupContent,
 } from "@/components/Sidebar";
 
 const sidebarItems = [
@@ -22,77 +27,78 @@ const sidebarItems = [
   { icon: BarChart3, label: "Analytics", path: "/scorecards" },
 ];
 
-const AppSidebar = () => {
+export default function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:flex flex-col w-16 lg:w-56 bg-sidebar border-r border-sidebar-border min-h-screen fixed left-0 top-0 z-30">
-      <div className="p-4 lg:p-6">
-        <h1 className="hidden lg:block text-foreground font-bold text-lg">Intelliview AI</h1>
-        {/* <p className="hidden lg:block text-primary text-xs font-semibold tracking-wider mt-0.5">PREMIUM TIER</p> */}
-      </div>
-
-      <SidebarContent className="px-2 mt-4">
+    <Sidebar collapsible="icon" {...props}>
+      <SidebarHeader>
         <SidebarMenu>
-          {sidebarItems.map((item) => {
-            const isActive = pathname === item.path;
-            return (
-              <SidebarMenuItem key={item.path}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive}
-                  tooltip={item.label}
-                  className={cn(
-                    "text-zinc-400 hover:text-white hover:bg-zinc-900 transition-all duration-200",
-                    isActive && "text-white bg-zinc-900"
-                  )}
-                >
-                  <Link href={item.path}>
-                    <item.icon className="w-5 h-5 shrink-0" />
-                    <span className="font-semibold text-xs tracking-wide">{item.label}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            );
-          })}
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" asChild>
+              <Link href="/" className="flex items-center gap-2 pl-1">
+                  <Logo className="h-6 w-auto" />
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
         </SidebarMenu>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Menu</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {sidebarItems.map((item) => {
+                const isActive = pathname === item.path;
+                return (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
+                      <Link href={item.path}>
+                        <item.icon />
+                        <span className="font-medium">{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4 space-y-2 mt-auto">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="text-zinc-400 hover:text-white hover:bg-zinc-900 transition-all duration-200"
-            >
-              <Link href="/settings">
-                <Settings className="w-5 h-5 shrink-0" />
-                <span className="font-semibold text-xs tracking-wide group-data-[collapsible=icon]:hidden">Settings</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="text-zinc-400 hover:text-white hover:bg-zinc-900 transition-all duration-200"
-            >
-              <Link href="/help">
-                <HelpCircle className="w-5 h-5 shrink-0" />
-                <span className="font-semibold text-xs tracking-wide group-data-[collapsible=icon]:hidden">Help Center</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-        
-        <div className="pt-4 group-data-[collapsible=icon]:hidden">
-          <button className="w-full py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-[10px] font-bold text-zinc-400 hover:text-white transition-all uppercase tracking-widest">
-            Upgrade Pro
-          </button>
-        </div>
+      <SidebarFooter>
+        <SidebarGroup>
+            <SidebarGroupContent>
+                <div className="p-2 mb-2 group-data-[collapsible=icon]:hidden">
+                    <div className="bg-primary/10 rounded-xl p-3 border border-primary/20 text-center flex flex-col items-center">
+                        <Zap className="w-5 h-5 text-primary mb-1" />
+                        <span className="text-[10px] uppercase font-bold text-foreground">Upgrade Pro</span>
+                        <span className="text-[10px] text-muted-foreground mt-1">Unlock FAANG mock reps</span>
+                    </div>
+                </div>
+                <SidebarMenu>
+                <SidebarMenuItem>
+                    <SidebarMenuButton tooltip="Settings" asChild>
+                    <Link href="/settings">
+                        <Settings />
+                        <span>Settings</span>
+                    </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton tooltip="Help Center" asChild>
+                    <Link href="/help">
+                        <HelpCircle />
+                        <span>Help Center</span>
+                    </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                </SidebarMenu>
+            </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   );
-};
-
-export default AppSidebar;
+}

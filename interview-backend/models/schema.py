@@ -144,6 +144,10 @@ class ScorecardResponse(BaseModel):
     eye_contact_score: Optional[float] = None
     confidence_level: Optional[float] = None
 
+class FinalizeRequest(BaseModel):
+    forced_status: Optional[str] = None
+    security_summary: Optional[str] = None
+
 class FullScorecardResponse(BaseModel):
     session_id: int
     interview_type: str

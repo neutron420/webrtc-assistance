@@ -14,15 +14,25 @@ class LLMService:
     """
 
     def __init__(self):
-        from openai import AsyncOpenAI
         import os
-        self.api_key = os.getenv("OPENAI_API_KEY")
-        if self.api_key:
-            self.client = AsyncOpenAI(api_key=self.api_key)
-            logger.info("LLMService initialized with OpenAI API.")
+        from groq import AsyncGroq
+        from openai import AsyncOpenAI
+
+        self.groq_api_key = os.getenv("GROQ_API_KEY")
+        self.openai_api_key = os.getenv("OPENAI_API_KEY")
+
+        if self.groq_api_key:
+            self.client = AsyncGroq(api_key=self.groq_api_key)
+            self.model = "llama-3.3-70b-versatile"
+            logger.info(f"LLMService initialized with Groq API (Model: {self.model})")
+        elif self.openai_api_key:
+            self.client = AsyncOpenAI(api_key=self.openai_api_key)
+            self.model = "gpt-4o"
+            logger.info(f"LLMService initialized with OpenAI API (Model: {self.model})")
         else:
             self.client = None
-            logger.warning("OPENAI_API_KEY not found in LLMService.")
+            self.model = None
+            logger.warning("Neither GROQ_API_KEY nor OPENAI_API_KEY found.")
 
     async def evaluate_answer(
         self,
@@ -32,56 +42,75 @@ class LLMService:
         company_target: str,
     ) -> dict:
         """
-        Sends the question + transcript to GPT-4o for STAR evaluation.
+        Sends the question + transcript to LLM for STAR evaluation.
         Returns structured scoring data.
         """
         prompt = f"""You are an expert technical interviewer at {company_target.upper()}.
-Evaluate the candidate's answer strictly using the STAR method (Situation, Task, Action, Result).
+Evaluate the candidate's answer based on both behavioral framework (STAR method if applicable) AND factual correctness.
 
 Interview Type: {interview_type}
+Role: Software Engineer / Target: {company_target.upper()}
 Question Asked: {question}
 User's Answer (Transcript): {transcript}
 
-Evaluate and score (0-10) on these dimensions:
+Task 1: Evaluate and score (0-10) on these metrics:
 1. Relevance: Does the answer directly address the question?
-2. Completeness: Does it cover all parts of the STAR framework?
-3. Technical Accuracy: Are the technical details correct?
+2. Completeness: Did they actually answer the question fully? 
+3. Technical Accuracy (CRITICAL): Are their technical concepts, algorithms, or system design details actually correct? If they are wrong, score low.
 
-Also provide:
-- A letter grade (A+, A, A-, B+, B, B-, C+, C, D, F)
-- Specific, constructive feedback mentioning exactly what was good and what was missing.
+Task 2: Also provide:
+- A letter grade (A+, A, ... F) prioritizing Technical Accuracy for technical questions.
+- A "star_structure_feedback" summarizing if they structured their answer well.
+- A "full_feedback" paragraph that MUST EXPLICITLY state:
+   - Whether the technical concepts they mentioned were RIGHT or WRONG.
+   - What the IDEAL or CORRECT answer should have included.
 
 Respond ONLY in JSON format:
 {{
     "relevance_score": 0-10,
     "completeness_score": 0-10,
-    "star_structure_feedback": "...",
+    "star_structure_feedback": "Short feedback on structure.",
     "technical_grade": "A/B/C/D/F",
-    "full_feedback": "..."
+    "full_feedback": "Detailed feedback: State if the answer is factually correct. Correct any wrong assumptions. Give the ideal solution."
 }}"""
 
         logger.info(f"Evaluating answer for question: {question[:50]}...")
 
         if not self.client:
-            logger.warning("No OpenAI client; returning placeholder evaluation.")
+            logger.warning("No LLM client; returning placeholder evaluation.")
             return {
                 "relevance_score": 5.0,
                 "completeness_score": 5.0,
                 "star_structure_feedback": "Placeholder feedback (API Key missing).",
                 "technical_grade": "B",
-                "full_feedback": "Please provide an OpenAI API key for live evaluation."
+                "full_feedback": "Please provide an API key for live evaluation."
             }
 
         try:
-            response = await self.client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
+            # Groq and OpenAI use similar chat completion interface
+            kwargs = {
+                "model": self.model,
+                "messages": [
                     {"role": "system", "content": "You are an expert interview evaluator. Respond ONLY with valid JSON."},
                     {"role": "user", "content": prompt}
                 ],
-                response_format={"type": "json_object"}
-            )
-            return json.loads(response.choices[0].message.content)
+            }
+            # Groq handles JSON response via generic instruction, but OpenAI supports response_format
+            if not self.groq_api_key:
+                kwargs["response_format"] = {"type": "json_object"}
+
+            response = await self.client.chat.completions.create(**kwargs)
+            content = response.choices[0].message.content
+            
+            # Robust JSON extraction
+            import re
+            json_match = re.search(r"\{.*\}", content, re.DOTALL)
+            if json_match:
+                content = json_match.group(0)
+            else:
+                raise ValueError("No JSON object found in LLM response")
+            
+            return json.loads(content)
         except Exception as e:
             logger.error(f"Error in evaluate_answer: {str(e)}")
             return {
@@ -92,9 +121,6 @@ Respond ONLY in JSON format:
                 "full_feedback": "We encountered an error analyzing your answer. Please try again."
             }
 
-    # ──────────────────────────────────────────────
-    # 2. Overall Session Grading
-    # ──────────────────────────────────────────────
 
     async def compute_overall_grade(self, answer_evaluations: list) -> dict:
         """
@@ -206,16 +232,26 @@ Respond ONLY in this exact JSON format:
 Make the plan highly specific to the user's weak areas. If communication is low, focus on STAR method.
 If technical is low, focus on DSA practice. If confidence is low, focus on body language and mock reps."""
 
-                response = await self.client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
+                kwargs = {
+                    "model": self.model,
+                    "messages": [
                         {"role": "system", "content": "You are a career coach. Respond ONLY with valid JSON."},
                         {"role": "user", "content": gpt_prompt}
                     ],
-                    response_format={"type": "json_object"}
-                )
-                plan = json.loads(response.choices[0].message.content)
-                logger.info("Study plan generated via GPT-4o successfully.")
+                }
+                if not self.groq_api_key:
+                    kwargs["response_format"] = {"type": "json_object"}
+
+                response = await self.client.chat.completions.create(**kwargs)
+                content = response.choices[0].message.content
+                import re
+                json_match = re.search(r"\{.*\}", content, re.DOTALL)
+                if json_match:
+                    content = json_match.group(0)
+                else:
+                    raise ValueError("No JSON object found in LLM response")
+                plan = json.loads(content)
+                logger.info("Study plan generated via LLM successfully.")
                 return plan
             except Exception as e:
                 logger.error(f"GPT-4o Study Plan Error: {e}. Falling back to static plan.")

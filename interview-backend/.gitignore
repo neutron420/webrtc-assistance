@@ -11,3 +11,7 @@ build/
 coverage/
 .env.local
 *.pyc
+__pycache__/
+temp_audio/
+venv/
+*.db

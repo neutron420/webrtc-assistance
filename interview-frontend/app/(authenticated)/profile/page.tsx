@@ -69,7 +69,7 @@ export default function ProfilePerformance() {
             />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-white tracking-tighter">Obsidian Candidate 204</h1>
+            <h1 className="text-3xl font-black text-white tracking-tighter">tailark.ai Candidate 204</h1>
             <p className="text-muted-foreground text-sm uppercase tracking-widest font-bold">Frontend Engineer Track • Google Simulation</p>
             <div className="flex gap-4 mt-3">
                <span className="px-3 py-1 bg-primary/10 border border-primary/30 text-primary text-[10px] rounded-full font-bold uppercase tracking-widest flex items-center gap-2">

@@ -79,39 +79,70 @@ class AnalyticsService:
         logger.info(f"Calculated WPM: {wpm} ({word_count} words)")
         return wpm
 
-    def generate_real_time_feedback(
+    def calculate_confidence_score(
         self,
         wpm: float,
         filler_count: int,
         eye_contact_score: float
+    ) -> float:
+        """
+        Heuristic-based confidence score (0-100).
+        High confidence = Steady pacing (120-150 WPM), low fillers, high eye contact.
+        """
+        score = 100.0
+        
+        # Pacing penalty (too slow or too fast)
+        if wpm < 80 or wpm > 180:
+            score -= 20
+        elif wpm < 100 or wpm > 160:
+            score -= 10
+            
+        # Filler word penalty
+        score -= (filler_count * 5)
+        
+        # Eye contact influence
+        score = (score * 0.6) + (eye_contact_score * 0.4)
+        
+        return max(0.0, min(100.0, round(score, 1)))
+
+    def generate_real_time_feedback(
+        self,
+        wpm: float,
+        filler_count: int,
+        eye_contact_score: float,
+        mood: Optional[str] = None
     ) -> list[str]:
         """
-        Generates real-time feedback cues to push to the frontend
-        via WebSocket during an active interview session.
-        
-        Returns a list of feedback strings.
+        Generates real-time feedback cues with a more 'encouraging coach' tone.
         """
         cues = []
 
         # WPM feedback
         if wpm > 180:
-            cues.append("⚡ You're speaking very fast! Take a deep breath and slow down.")
-        elif wpm > 160:
-            cues.append("🐇 Slow down a little — you're speaking quickly.")
-        elif wpm < 80:
-            cues.append("🐢 Try to speak a bit faster to maintain engagement.")
+            cues.append("🚀 Slow down! You're racing. Try to pause between sentences.")
+        elif wpm > 165:
+            cues.append("🐎 Pacing is a bit fast. Take a breath.")
+        elif wpm > 0 and wpm < 90:
+            cues.append("🐢 Try to speak with a bit more energy and speed.")
 
         # Filler word feedback
-        if filler_count > 10:
-            cues.append("🚨 Too many filler words! Pause silently instead of saying 'um' or 'like'.")
-        elif filler_count > 5:
-            cues.append("⚠️ Watch your filler words — try replacing 'um' with a brief pause.")
+        if filler_count > 8:
+            cues.append("🚨 Watch the fillers ('um', 'like'). Try a silent pause instead.")
+        elif filler_count > 3:
+            cues.append("⚠️ A few too many fillers. You're doing great, just stay conscious of them.")
 
         # Eye contact feedback
-        if eye_contact_score < 30:
-            cues.append("👀 Make more eye contact with the camera!")
-        elif eye_contact_score < 50:
-            cues.append("👁️ Try to look at the camera more often.")
+        if eye_contact_score < 40:
+            cues.append("👀 Look at the camera to build a connection with the interviewer.")
+        elif eye_contact_score < 65:
+            cues.append("👁️ Good, but try to maintain eye contact more consistently.")
+
+        # Mood feedback (New!)
+        if mood == "Surprised / Nervous":
+            cues.append("🧘 You look a bit tense. Relax your shoulders and take a deep breath.")
+        elif mood == "Neutral" and wpm > 0:
+            # Randomly encourage to smile if they've been neutral for a while (would need state, but let's keep it simple)
+            pass 
 
         return cues
 

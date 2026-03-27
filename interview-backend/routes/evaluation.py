@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +12,7 @@ from models.schema import (
     ScorecardResponse,
     FullScorecardResponse,
     EyeContactUpdate,
+    FinalizeRequest,
 )
 from services.llm_service import llm_service
 from services.analytics_service import analytics_service
@@ -139,7 +141,7 @@ async def update_eye_contact(req: EyeContactUpdate, db: AsyncSession = Depends(g
 
 
 @router.post("/finalize/{session_id}", response_model=FullScorecardResponse)
-async def finalize_session(session_id: int, db: AsyncSession = Depends(get_db)):
+async def finalize_session(session_id: int, req: Optional[FinalizeRequest] = None, db: AsyncSession = Depends(get_db)):
     """
     Finalizes a session and generates the comprehensive post-interview scorecard.
     
@@ -156,6 +158,26 @@ async def finalize_session(session_id: int, db: AsyncSession = Depends(get_db)):
         select(AnswerLog).where(AnswerLog.session_id == session_id).order_by(AnswerLog.question_index)
     )
     answers = answers_result.scalars().all()
+
+    # Handle N/A or empty session
+    if req and req.forced_status == "N/A":
+        session.overall_grade = "N/A"
+        session.is_finalized = 1
+        await db.commit()
+        
+        reason = req.security_summary if req.security_summary else "Excessive security violations."
+        return FullScorecardResponse(
+            session_id=session.id,
+            interview_type=session.interview_type,
+            role=session.role,
+            company_target=session.company_target,
+            overall_grade="N/A",
+            answers=[],
+            communication_score=0.0,
+            confidence_score=0.0,
+            technical_score=0.0,
+            recommendations=[f"Session terminated: {reason}"]
+        )
 
     if not answers:
         raise HTTPException(status_code=400, detail="No answers submitted for this session")

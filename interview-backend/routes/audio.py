@@ -153,6 +153,7 @@ async def audio_stream_websocket(websocket: WebSocket):
                 wpm = data.get("wpm", 0)
                 filler_count = data.get("filler_count", 0)
                 eye_contact = data.get("eye_contact_score", 100)
+                mood = data.get("mood", "Neutral")
                 transcript_chunk = data.get("transcript_chunk", "")
 
                 # Detect filler words in the latest chunk
@@ -161,11 +162,19 @@ async def audio_stream_websocket(websocket: WebSocket):
                     chunk_fillers = analytics_service.detect_filler_words(transcript_chunk)
                     filler_count += analytics_service.get_filler_word_total(chunk_fillers)
 
+                # Generate confidence score
+                confidence_score = analytics_service.calculate_confidence_score(
+                    wpm=wpm,
+                    filler_count=filler_count,
+                    eye_contact_score=eye_contact,
+                )
+
                 # Generate real-time feedback cues
                 cues = analytics_service.generate_real_time_feedback(
                     wpm=wpm,
                     filler_count=filler_count,
                     eye_contact_score=eye_contact,
+                    mood=mood
                 )
 
                 feedback_payload = {
@@ -173,6 +182,8 @@ async def audio_stream_websocket(websocket: WebSocket):
                     "cues": cues,
                     "filler_words_detected": chunk_fillers,
                     "current_wpm": wpm,
+                    "confidence_score": confidence_score,
+                    "total_fillers": filler_count
                 }
 
                 # Send directly back to connected user

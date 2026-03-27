@@ -77,9 +77,9 @@ export default function SetupDashboard() {
         <h1 className="text-4xl md:text-5xl font-extrabold tracking-tighter text-foreground">
           Configure Your Interview
         </h1>
-        <p className="text-muted-foreground text-xs uppercase tracking-[0.3em] font-medium">
-          The Obsidian Lens: High Fidelity Simulation
-        </p>
+          <p className="text-[10px] tracking-[0.3em] text-muted-foreground uppercase font-bold text-center mt-4">
+            The Tailark AI Lens: High Fidelity Simulation
+          </p>
       </div>
 
       <form className="space-y-8" onSubmit={handleStart}>
@@ -169,26 +169,54 @@ export default function SetupDashboard() {
       </form>
 
       {progressData && progressData.sessions?.length > 0 && (
-        <div className="space-y-6 pt-4">
+        <div className="space-y-6 pt-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-foreground tracking-tight">Recent Performance</h3>
-            <div className="h-px flex-1 bg-border mx-6 hidden md:block"></div>
+            <h3 className="text-xl font-bold text-foreground tracking-tight">Recent Activity</h3>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {progressData.sessions.slice(0, 3).map((session: any) => (
-              <div key={session.session_id} 
-                onClick={() => router.push(`/scorecard/OBS-${session.session_id}`)}
-                className="p-6 bg-card rounded-2xl border border-border hover:border-primary/50 transition-all cursor-pointer group shadow-sm hover:shadow-md">
-                <div className="flex justify-between items-start mb-4">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{session.interview_type}</span>
-                  <div className="bg-primary/10 text-primary rounded-lg px-2 py-1">
-                    <span className="text-lg font-black">{session.overall_grade}</span>
-                  </div>
-                </div>
-                <p className="font-bold text-foreground mb-1 truncate">{session.role}</p>
-                <p className="text-[10px] text-muted-foreground uppercase font-medium">{new Date(session.created_at).toLocaleDateString()}</p>
-              </div>
-            ))}
+          <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left border-collapse">
+                <thead className="bg-muted/50 text-xs uppercase font-bold tracking-widest text-muted-foreground border-b border-border">
+                  <tr>
+                    <th scope="col" className="px-6 py-4">Interview Type</th>
+                    <th scope="col" className="px-6 py-4">Role & Company</th>
+                    <th scope="col" className="px-6 py-4">Date</th>
+                    <th scope="col" className="px-6 py-4 text-right">Grade</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {progressData.sessions.slice(0, 5).map((session: any) => (
+                    <tr 
+                      key={session.session_id} 
+                      onClick={() => router.push(`/scorecard/OBS-${session.session_id}`)}
+                      className="bg-card hover:bg-muted/30 transition-colors cursor-pointer group"
+                    >
+                      <td className="px-6 py-4 font-semibold text-foreground whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-primary/70 group-hover:bg-primary transition-colors"></div>
+                            {session.interview_type.replace('_', ' ')}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="font-bold text-foreground">{session.role}</p>
+                      </td>
+                      <td className="px-6 py-4 text-muted-foreground font-medium">
+                        {new Date(session.created_at).toLocaleDateString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                        })}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="inline-flex items-center justify-center bg-primary/10 text-primary border border-primary/20 rounded-lg px-3 py-1 font-black text-sm">
+                          {session.overall_grade}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

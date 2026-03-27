@@ -78,7 +78,7 @@ export function AuthPage({ mode: initialMode = 'login' }: AuthPageProps) {
 			<div className="relative z-10 w-full max-w-[400px] px-8 py-12 space-y-8 bg-white/80 backdrop-blur-sm rounded-2xl">
 				<div className="flex flex-col items-center gap-4 mb-4">
 					<div className="p-3 bg-white rounded-xl border border-zinc-200 shadow-sm">
-						<Logo className="h-6 w-auto text-black" />
+						<Logo className="h-6 w-auto" />
 					</div>
 				</div>
 

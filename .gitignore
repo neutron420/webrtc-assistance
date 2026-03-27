@@ -1,0 +1,28 @@
+# Environment
+.env
+.env.local
+.env.development
+.env.production
+
+# Dependencies
+node_modules/
+venv/
+env/
+__pycache__/
+*.pyc
+
+# Local Data
+temp_audio/
+*.db
+*.sqlite3
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store
+
+# Build Outputs
+dist/
+build/
+.next/
+out/

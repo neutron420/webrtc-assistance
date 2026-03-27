@@ -4,7 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Webcam from 'react-webcam';
 import { 
-  Bell, Mic, MicOff, Video, VideoOff, CheckCircle2, Eye, AlertTriangle, Zap, Smile, ArrowUp
+  Bell, Mic, MicOff, Video, VideoOff, CheckCircle2, Eye, AlertTriangle, Zap, Smile, ArrowUp,
+  Smartphone
 } from 'lucide-react';
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 import { apiFetch, endpoints } from '@/lib/api-client';
@@ -45,6 +46,31 @@ export default function LiveInterviewRoom() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const liveSubtitle = realTimeTranscript.trim();
 
+  // Strict Hardware Permissions State
+  const [hasPermissions, setHasPermissions] = useState(false);
+  const [permissionError, setPermissionError] = useState("");
+
+  const requestPermissions = async () => {
+      try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          // Force stop the dummy stream tracks so Webcam component naturally takes over
+          stream.getTracks().forEach(track => track.stop());
+          setPermissionError("");
+          setHasPermissions(true);
+      } catch (err) {
+          setPermissionError("Camera and Microphone access are strictly required to start the interview session. Please allow them in your browser.");
+      }
+  };
+
+  // Global Unmount Cleanup for Hardware Streams
+  useEffect(() => {
+      return () => {
+          if (mediaRecorderRef.current && mediaRecorderRef.current.stream) {
+              mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
+          }
+      };
+  }, []);
+
 
   const handleCameraReady = () => {
     setIsCameraActive(true);
@@ -59,8 +85,10 @@ export default function LiveInterviewRoom() {
   const [faceLandmarker, setFaceLandmarker] = useState<FaceLandmarker | null>(null);
   const [eyeContactScore, setEyeContactScore] = useState(0);
   const [isSmiling, setIsSmiling] = useState(false);
-  const [confidenceLevel, setConfidenceLevel] = useState(70);
+  const [confidenceLevel, setConfidenceLevel] = useState(0);
   const [isNodding, setIsNodding] = useState(false);
+  const [multiFaceDetected, setMultiFaceDetected] = useState(false);
+  const [deviceDetected, setDeviceDetected] = useState(false);
   const smoothedEyeScoreRef = useRef(0);
   const requestRef = useRef<number | undefined>(undefined);
   const lastNoseYRef = useRef<number | null>(null);
@@ -70,21 +98,54 @@ export default function LiveInterviewRoom() {
   const [wpmAlert, setWpmAlert] = useState(false);
   const [eyeContactAlert, setEyeContactAlert] = useState(false);
   const [smileCue, setSmileCue] = useState(false);
-  const lookAwayTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [violations, setViolations] = useState(0);
+  const violationStartRef = useRef<number | null>(null);
+
+  const scoreRef = useRef(eyeContactScore);
+  const faceStateRef = useRef(!!faceLandmarker);
+  const multiFaceRef = useRef(multiFaceDetected);
+  const graceStartRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (eyeContactScore < 45 && isRecording) {
-        if (!lookAwayTimerRef.current) {
-            lookAwayTimerRef.current = setTimeout(() => setEyeContactAlert(true), 3000);
+    scoreRef.current = eyeContactScore;
+    faceStateRef.current = !!faceLandmarker;
+    multiFaceRef.current = multiFaceDetected;
+  }, [eyeContactScore, faceLandmarker, multiFaceDetected]);
+
+  useEffect(() => {
+    // SECURITY ENGINE v3.5 (Device & Signal Monitoring)
+    const monitor = setInterval(() => {
+        const isSuspect = (scoreRef.current < 60 || !faceStateRef.current || multiFaceRef.current || deviceDetected);
+        
+        if (isSuspect) {
+            setEyeContactAlert(true);
+            if (!violationStartRef.current) violationStartRef.current = performance.now();
+            
+            const duration = (performance.now() - violationStartRef.current) / 1000;
+            if (duration >= 3) { // 3.0s high-speed security check
+                setViolations(prev => prev + 1);
+                violationStartRef.current = performance.now(); 
+            }
+        } else {
+            if (!graceStartRef.current) graceStartRef.current = performance.now();
+            const graceDuration = (performance.now() - graceStartRef.current) / 1000;
+            if (graceDuration >= 2.0) {
+                setEyeContactAlert(false);
+                violationStartRef.current = null;
+                graceStartRef.current = null;
+            }
         }
-    } else {
-        if (lookAwayTimerRef.current) {
-            clearTimeout(lookAwayTimerRef.current);
-            lookAwayTimerRef.current = null;
-        }
-        setEyeContactAlert(false);
+    }, 200); 
+    
+    return () => clearInterval(monitor);
+  }, [faceLandmarker, deviceDetected]); // Re-run if device state changes to catch it immediately
+
+  useEffect(() => {
+    if (violations >= 4) {
+        alert("SECURITY TERMINATION: Total violations exceeded. Session closed.");
+        handleEndInterview("N/A");
     }
-  }, [eyeContactScore, isRecording]);
+  }, [violations]);
 
   useEffect(() => {
     // 0. Check if session is already finalized (Security/Stability Task)
@@ -108,13 +169,14 @@ export default function LiveInterviewRoom() {
             const landmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
                 baseOptions: {
                     modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
-                    delegate: "GPU"
+                    delegate: "CPU" // Use CPU for wider compatibility during debug
                 },
                 runningMode: "VIDEO",
-                numFaces: 1
+                numFaces: 2 // Allow detecting up to 2 faces for proctoring warnings
             });
             setFaceLandmarker(landmarker);
             setIsMediaPipeLoading(false);
+            console.log("MediaPipe initialized successfully.");
         } catch (e) {
             console.error("MediaPipe Init Error:", e);
             setIsMediaPipeLoading(false);
@@ -142,12 +204,16 @@ export default function LiveInterviewRoom() {
         if (webcamRef.current && webcamRef.current.video && webcamRef.current.video.readyState === 4) {
             const video = webcamRef.current.video;
             const canvas = canvasRef.current;
-            if (!canvas) return;
+            if (!canvas) {
+                requestRef.current = requestAnimationFrame(detect);
+                return;
+            }
 
-            const videoWidth = video.videoWidth;
-            const videoHeight = video.videoHeight;
-            canvas.width = videoWidth;
-            canvas.height = videoHeight;
+            // Sync canvas resolution slightly less aggressively to save CPU
+            if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+            }
 
             const startTimeMs = performance.now();
             const results = faceLandmarker.detectForVideo(video, startTimeMs);
@@ -159,84 +225,87 @@ export default function LiveInterviewRoom() {
                 if (results.faceLandmarks && results.faceLandmarks.length > 0) {
                     const landmarks = results.faceLandmarks[0];
                     
-                    // Draw Iris Landmarks (for debugging Day 3 KPI)
-                    const leftIris = landmarks[468]; 
-                    const rightIris = landmarks[473];
-                    const leftEyeOuter = landmarks[33];
-                    const leftEyeInner = landmarks[133];
-                    const rightEyeInner = landmarks[362];
-                    const rightEyeOuter = landmarks[263];
-                    const upperFace = landmarks[10];
-                    const noseTip = landmarks[1];
-                    const mouthLeft = landmarks[61];
-                    const mouthRight = landmarks[291];
-                    const faceLeft = landmarks[454];
-                    const faceRight = landmarks[234];
-
-                    ctx.fillStyle = "#6ffbbe";
-                    ctx.beginPath();
-                    ctx.arc(leftIris.x * canvas.width, leftIris.y * canvas.height, 4, 0, 2 * Math.PI);
-                    ctx.arc(rightIris.x * canvas.width, rightIris.y * canvas.height, 4, 0, 2 * Math.PI);
-                    ctx.fill();
-
-                    // Draw eye contours
-                    ctx.strokeStyle = "rgba(255,255,255,0.5)";
-                    ctx.lineWidth = 1;
-                    const eyeIndices = [33, 133, 362, 263];
-                    eyeIndices.forEach(idx => {
-                        const pt = landmarks[idx];
-                        ctx.strokeRect(pt.x * canvas.width - 2, pt.y * canvas.height - 2, 4, 4);
+                    // 1. Calculate Bounding Box
+                    let minX = 1, minY = 1, maxX = 0, maxY = 0;
+                    landmarks.forEach(lm => {
+                        minX = Math.min(minX, lm.x); minY = Math.min(minY, lm.y);
+                        maxX = Math.max(maxX, lm.x); maxY = Math.max(maxY, lm.y);
                     });
 
-                    // 1. Eye Contact Score
-                    const leftEyeScore = getCenteredRatioScore(leftIris.x, leftEyeInner.x, leftEyeOuter.x);
-                    const rightEyeScore = getCenteredRatioScore(rightIris.x, rightEyeInner.x, rightEyeOuter.x);
-                    const headAlignmentScore = getCenteredRatioScore(noseTip.x, faceLeft.x, faceRight.x);
-                    const verticalAlignmentScore = getCenteredRatioScore(noseTip.y, upperFace.y, mouthLeft.y);
-                    const rawEyeScore = (
-                        ((leftEyeScore + rightEyeScore) / 2) * 0.55 +
-                        headAlignmentScore * 0.35 +
-                        verticalAlignmentScore * 0.10
-                    ) * 100;
-                    smoothedEyeScoreRef.current = (smoothedEyeScoreRef.current * 0.85) + (rawEyeScore * 0.15);
-                    const finalEyeScore = Math.round(smoothedEyeScoreRef.current);
-                    setEyeContactScore(finalEyeScore);
+                    const boxX = minX * canvas.width; const boxY = minY * canvas.height;
+                    const boxW = (maxX - minX) * canvas.width; const boxH = (maxY - minY) * canvas.height;
 
-                    // 2. Smile Detection (mouth corners vs face width)
-                    const mouthWidth = Math.sqrt(Math.pow(mouthRight.x - mouthLeft.x, 2) + Math.pow(mouthRight.y - mouthLeft.y, 2));
-                    const faceWidth = Math.sqrt(Math.pow(faceRight.x - faceLeft.x, 2) + Math.pow(faceRight.y - faceLeft.y, 2));
-                    const smileRatio = mouthWidth / faceWidth;
-                    const smiling = smileRatio > 0.45;
-                    setIsSmiling(smiling);
+                    // 2. HUD Drawing
+                    const activeColor = eyeContactScore > 40 ? "#6ffbbe" : "#ff4b4b";
+                    ctx.strokeStyle = activeColor;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(boxX, boxY, boxW, boxH);
+                    
+                    // Confidence / Score Calcs
+                    const leftIris = landmarks[468]; 
+                    const rightIris = landmarks[473];
+                    const noseTip = landmarks[1];
+                    const faceLeft = landmarks[234];
+                    const faceRight = landmarks[454];
+                    const leftEyeInner = landmarks[133];
+                    const leftEyeOuter = landmarks[33];
+                    const rightEyeInner = landmarks[362];
+                    const rightEyeOuter = landmarks[263];
 
-                    // 3. Nodding Detection (nose tip vertical movement)
-                    if (lastNoseYRef.current !== null) {
-                        const deltaY = Math.abs(noseTip.y - lastNoseYRef.current);
-                        if (deltaY > 0.005) {
-                            noddingCountRef.current += 1;
-                            if (noddingCountRef.current > 10) {
-                                setIsNodding(true);
-                                setTimeout(() => setIsNodding(false), 2000);
-                                noddingCountRef.current = 0;
-                            }
+                    let ecVal = 0;
+                    if (leftIris && rightIris) {
+                        const lGaze = getCenteredRatioScore(leftIris.x, leftEyeInner.x, leftEyeOuter.x);
+                        const rGaze = getCenteredRatioScore(rightIris.x, rightEyeInner.x, rightEyeOuter.x);
+                    const hPose = getCenteredRatioScore(noseTip.x, faceLeft.x, faceRight.x);
+                        const vPose = getCenteredRatioScore(noseTip.y, landmarks[10].y, landmarks[152].y);
+                        ecVal = ((lGaze + rGaze) / 2) * 60 + hPose * 30 + vPose * 10;
+                        
+                        // Device Detection (Heuristic: Low gaze persistence)
+                        if (vPose < 0.28) { // Deep look down
+                            ecVal = Math.min(ecVal, 10);
+                            setDeviceDetected(true);
+                        } else {
+                            setDeviceDetected(false);
                         }
+                        
+                        // Crosshair visualization
+                        ctx.fillStyle = "white";
+                        [leftIris, rightIris].forEach(iris => {
+                            ctx.beginPath(); ctx.arc(iris.x * canvas.width, iris.y * canvas.height, 3, 0, 2 * Math.PI); ctx.fill();
+                        });
+                    } else {
+                        // Fallback to simpler face centering
+                        ecVal = getCenteredRatioScore(noseTip.x, faceLeft.x, faceRight.x) * 45;
                     }
-                    lastNoseYRef.current = noseTip.y;
 
-                    // 4. Composite Confidence Level
-                    let confidence = Math.round(finalEyeScore * 0.7);
-                    if (smiling) confidence += 20;
-                    if (isNodding) confidence += 10;
-                    setConfidenceLevel(Math.min(100, confidence));
+                    smoothedEyeScoreRef.current = (smoothedEyeScoreRef.current * 0.7) + (ecVal * 0.3);
+                    const finalEC = Math.round(smoothedEyeScoreRef.current);
+                    setEyeContactScore(finalEC);
+                    setConfidenceLevel(Math.min(100, Math.round(finalEC * 1.2)));
+
+                    // Removed legacy tracking indicators from Canvas (Moved to HTML Overlay)
+
+
+                    // Multi-face detection (Proctoring)
+                    if (results.faceLandmarks.length > 1) {
+                        setMultiFaceDetected(true);
+                    } else {
+                        setMultiFaceDetected(false);
+                    }
+
                 } else {
                     setEyeContactScore(0);
+                    setConfidenceLevel(0);
                 }
             }
+        } else {
+            // Camera not ready or lost
+            setEyeContactScore(0);
         }
         requestRef.current = requestAnimationFrame(detect);
     };
     detect();
-  }, [faceLandmarker]);
+  }, [faceLandmarker, isCameraActive]);
 
 
 
@@ -368,13 +437,59 @@ export default function LiveInterviewRoom() {
       }
   };
 
-  const handleEndInterview = async () => {
+  const handleEndInterview = async (forcedStatus?: string) => {
     try {
-        const finalScorecard = await apiFetch(endpoints.finalizeSession(numSessionId), { method: 'POST' });
+        let summary = "User-initiated termination.";
+        if (forcedStatus === "N/A") {
+            const reasons = [];
+            if (violations >= 4) reasons.push("Excessive signal loss");
+            if (multiFaceDetected) reasons.push("Multi-face detected");
+            if (deviceDetected) reasons.push("Phone/Device usage suspected");
+            summary = reasons.join(" | ") || "Violation threshold hit.";
+        }
+
+        const payload = forcedStatus ? { forced_status: forcedStatus, security_summary: summary } : {};
+        const finalScorecard = await apiFetch(endpoints.finalizeSession(numSessionId), { 
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
         localStorage.setItem(`scorecard_${numSessionId}`, JSON.stringify(finalScorecard));
     } catch(e) { console.error("Could not finalize", e); }
-    router.push(`/scorecard/${sessionId}`);
+    router.push(`/scorecard/${sessionId}${forcedStatus ? '?status=na' : ''}`);
   };
+
+  if (!hasPermissions) {
+      return (
+          <div className="flex flex-col h-screen overflow-hidden bg-background items-center justify-center p-6 text-center text-foreground font-sans relative">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/20 blur-[120px] rounded-full pointer-events-none -z-10"></div>
+              
+              <div className="bg-card border border-border p-12 rounded-[2rem] max-w-lg shadow-2xl flex flex-col items-center z-10 isolate backdrop-blur-sm relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent"></div>
+                  <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center text-primary mb-8 animate-pulse shadow-inner border border-primary/20">
+                      <Video size={40} className="ml-1" />
+                  </div>
+                  <h1 className="text-3xl font-bold mb-4 tracking-tight text-foreground">Hardware Check</h1>
+                  <p className="text-muted-foreground text-sm mb-8 leading-relaxed max-w-[85%]">
+                      To begin your AI Sandbox Session, we need permission to use your camera and microphone for real-time AI analysis. All interactions are strictly private.
+                  </p>
+                  
+                  {permissionError && (
+                      <div className="bg-destructive/10 border border-destructive/20 px-6 py-4 rounded-2xl mb-8 w-full flex items-start gap-3 text-left">
+                          <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                          <p className="text-destructive text-xs font-medium leading-relaxed">{permissionError}</p>
+                      </div>
+                  )}
+                  
+                  <button 
+                      onClick={requestPermissions}
+                      className="bg-primary text-primary-foreground font-bold px-10 py-4 rounded-full hover:scale-105 hover:shadow-[0_0_30px_rgba(var(--primary),0.4)] transition-all duration-300 w-full flex justify-center tracking-wide"
+                  >
+                      Allow Camera & Microphone
+                  </button>
+              </div>
+          </div>
+      );
+  }
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
@@ -389,9 +504,13 @@ export default function LiveInterviewRoom() {
 
         {eyeContactAlert && (
             <div className="fixed top-36 left-1/2 -translate-x-1/2 z-[60] animate-pulse">
-                <div className="bg-background text-black px-6 py-3 rounded-full font-bold flex items-center gap-3 shadow-2xl border-2 border-[#6ffbbe]">
-                    <Eye size={20} className="text-[#6ffbbe]" />
-                    <span>EYE CONTACT: Look at the camera!</span>
+                <div className="bg-background text-foreground px-6 py-3 rounded-full font-bold flex flex-col items-center gap-1 shadow-2xl border-2 border-red-500">
+                    <div className="flex items-center gap-3">
+                        <Eye size={20} className="text-red-500" />
+                        <span className="text-red-500">LOW SIGNAL / EYE CONTACT!</span>
+                    </div>
+                    <span className="text-xs uppercase tracking-widest text-red-400">Violation {violations}/3 Recorded</span>
+                    <span className="text-[10px] text-muted-foreground">Session ends on 4th violation</span>
                 </div>
             </div>
         )}
@@ -401,6 +520,30 @@ export default function LiveInterviewRoom() {
                 <div className="bg-[#6ffbbe] text-black px-6 py-2 rounded-full font-bold flex items-center gap-3 shadow-2xl">
                     <Smile size={20} />
                     <span>NICE! A smile builds rapport.</span>
+                </div>
+            </div>
+        )}
+
+        {multiFaceDetected && (
+            <div className="fixed top-64 left-1/2 -translate-x-1/2 z-[70] animate-bounce">
+                <div className="bg-red-600 text-white px-8 py-4 rounded-2xl font-bold flex flex-col items-center gap-2 shadow-[0_0_50px_rgba(239,68,68,0.5)] border-2 border-white/20">
+                    <div className="flex items-center gap-3">
+                        <AlertTriangle size={24} />
+                        <span className="text-lg">MULTI-FACE DETECTED!</span>
+                    </div>
+                    <span className="text-xs opacity-80 underline underline-offset-4">Only one person allowed during session.</span>
+                </div>
+            </div>
+        )}
+
+        {deviceDetected && (
+            <div className="fixed top-80 left-1/2 -translate-x-1/2 z-[75] animate-pulse">
+                <div className="bg-amber-600 text-white px-8 py-4 rounded-2xl font-bold flex flex-col items-center gap-2 shadow-[0_0_50px_rgba(245,158,11,0.5)] border-2 border-white/20">
+                    <div className="flex items-center gap-3">
+                        <Smartphone size={24} />
+                        <span className="text-lg">DEVICE DETECTED!</span>
+                    </div>
+                    <span className="text-xs opacity-80 uppercase tracking-widest">External device usage is prohibited.</span>
                 </div>
             </div>
         )}
@@ -456,12 +599,45 @@ export default function LiveInterviewRoom() {
                     </div>
                     )}
                     
-                    <div className="absolute top-4 left-4 bg-background/70 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 flex items-center gap-2">
+                    <div className="absolute top-4 left-4 bg-background/80 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 flex flex-col gap-1.5 shadow-lg">
                         {isMediaPipeLoading ? (
-                            <><div className="w-2 h-2 rounded-full bg-primary animate-spin"></div><span className="text-[10px] text-muted-foreground uppercase tracking-widest">Vision Booting...</span></>
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-primary animate-spin"></div>
+                                <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Vision Booting...</span>
+                            </div>
                         ) : (
-                            <><Eye size={14} className={eyeContactScore > 65 ? "text-slate-500" : "text-amber-400"} /><span className="text-xs font-medium text-foreground">Eye Contact: {eyeContactScore}%</span></>
+                            <>
+                                <div className="flex items-center gap-2">
+                                    <Eye size={14} className={eyeContactScore > 65 ? "text-emerald-400" : "text-amber-400"} />
+                                    <span className="text-xs font-semibold text-foreground">Eye Contact: {eyeContactScore}%</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Smile size={14} className="text-blue-400" />
+                                    <span className="text-xs font-semibold text-foreground">Confidence: {confidenceLevel}%</span>
+                                </div>
+                            </>
                         )}
+                    </div>
+
+                    <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
+                        {/* Right-Side Proctoring Widget */}
+                        <div className="bg-background/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 flex items-center gap-3">
+                            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-tighter">Proctoring Status</span>
+                            <div className="flex gap-1">
+                                {[1, 2, 3].map(i => (
+                                    <div key={i} className={`w-2 h-2 rounded-full ${violations >= i ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]' : 'bg-white/10'}`}></div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Tracking Dot (Pulsing) */}
+                        <div className="flex items-center gap-2 mr-1">
+                            <div className="relative">
+                                <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></div>
+                                <div className="absolute inset-0 bg-red-600 rounded-full animate-ping opacity-20"></div>
+                            </div>
+                            <span className="text-[10px] font-mono text-red-500/80 font-bold tracking-[0.2em]">TRACKING_ACTIVE</span>
+                        </div>
                     </div>
                     
                     <div className="absolute bottom-4 left-4 bg-background/70 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 flex items-center gap-2">
@@ -537,7 +713,7 @@ export default function LiveInterviewRoom() {
                     </button>
                 )}
                 <div className="h-8 w-px bg-background/70"></div>
-                <button onClick={handleEndInterview} className="px-6 py-2 w-48 h-12 text-xs font-bold text-red-400 uppercase tracking-widest hover:bg-[#ffb4ab]/10 rounded-full transition-colors">
+                <button onClick={() => handleEndInterview()} className="px-6 py-2 w-48 h-12 text-xs font-bold text-red-400 uppercase tracking-widest hover:bg-[#ffb4ab]/10 rounded-full transition-colors">
                     End Interview
                 </button>
             </div>
