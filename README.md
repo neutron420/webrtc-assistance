@@ -116,7 +116,25 @@ For high-stakes mock interviews, the system enforces a strict Security Protocol:
 
 ---
 
-## 6. Installation and Setup
+## 6. Security and Data Integrity
+
+The AI Sandbox architecture is designed with a "Privacy-First, Integrity-Always" approach:
+
+### Vision Privacy
+- **On-Device Processing**: All Computer Vision calculations (MediaPipe FaceLandmarker) occur directly on the candidate's browser. No raw video feed is transmitted to the backend, ensuring zero-latency proctoring and total visual privacy.
+- **Skeletal Metadata**: Only extracted metadata (e.g., eye contact percentages) is persisted for the final scorecard.
+
+### Interview Integrity
+- **Finalized Session Locking**: Once a session is finalized (either manually or via security termination), the database record is flagged as `is_finalized`. Any subsequent attempts to modify answer logs or scores are rejected by the API layer.
+- **Anti-Bypass Mechanisms**: The termination protocol uses performance-based timestamps (`performance.now()`) to ensure the 3-second security checks cannot be bypassed by browser throttling or simulated events.
+
+### API & Secret Management
+- **Environment Isolation**: Sensitive credentials (OPENAI_API_KEY, GROQ_API_KEY, DATABASE_URL) are strictly isolated in `.env` files and are never exposed to the client-side bundle.
+- **CORS Hardening**: The FastAPI backend implements a strict Cross-Origin Resource Sharing policy to ensure only authorized frontend origins can interact with session data.
+
+---
+
+## 7. Installation and Setup
 
 ### Prerequisites
 - Node.js 18+ (Bun recommended)
