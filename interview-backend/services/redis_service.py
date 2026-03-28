@@ -19,7 +19,10 @@ class RedisService:
         self.is_connected = False
 
     async def connect(self):
-        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        redis_url = os.getenv("REDIS_URL")
+        if not redis_url:
+            logger.error("🛑 CRITICAL ERROR: REDIS_URL not found in environment. Deployment aborted.")
+            raise ValueError("REDIS_URL environment variable is missing!")
         try:
             self.redis_client = redis.from_url(redis_url, decode_responses=True)
             # Test the connection to ensure server is live

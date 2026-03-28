@@ -26,3 +26,6 @@ dist/
 build/
 .next/
 out/
+
+# Scripts with potential secrets
+scripts/sync_secrets.ps1

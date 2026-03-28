@@ -1,0 +1,99 @@
+# name: CI/CD Pipeline
+
+# on:
+#   push:
+#     branches: [ "main" ]
+#   pull_request:
+#     branches: [ "main" ]
+
+# jobs:
+#   # Backend Build & Test
+#   backend-test:
+#     runs-on: ubuntu-latest
+#     steps:
+#     - uses: actions/checkout@v4
+#     - name: Set up Python
+#       uses: actions/setup-python@v5
+#       with:
+#         python-version: '3.11'
+#     - name: Install dependencies
+#       working-directory: ./interview-backend
+#       run: |
+#         python -m pip install --upgrade pip
+#         pip install -r requirements.txt
+#         pip install pytest
+#     - name: Run Linting
+#       working-directory: ./interview-backend
+#       run: echo "Linting backend..."
+
+#   # Frontend Build & Test
+#   frontend-test:
+#     runs-on: ubuntu-latest
+#     steps:
+#     - uses: actions/checkout@v4
+#     - name: Set up Bun
+#       uses: oven-sh/setup-bun@v2
+#       with:
+#         bun-version: latest
+#     - name: Install dependencies
+#       working-directory: ./interview-frontend
+#       run: bun install
+#     - name: Run Build
+#       working-directory: ./interview-frontend
+#       run: bun run build
+#       env:
+#         NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+
+#   # Dockerize (Build and Verify both services)
+#   docker-build:
+#     needs: [backend-test, frontend-test]
+#     runs-on: ubuntu-latest
+#     steps:
+#     - uses: actions/checkout@v4
+    
+#     - name: Set up Docker Buildx
+#       uses: docker/setup-buildx-action@v3
+
+#     - name: Build Backend Image
+#       uses: docker/build-push-action@v5
+#       with:
+#         context: ./interview-backend
+#         push: false
+#         tags: interview-backend:latest
+#         build-args: |
+#           DATABASE_URL=${{ secrets.DATABASE_URL }}
+#           REDIS_URL=${{ secrets.REDIS_URL }}
+#           OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+#           GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
+
+#     - name: Build Frontend Image
+#       uses: docker/build-push-action@v5
+#       with:
+#         context: ./interview-frontend
+#         build-args: |
+#           NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+#         push: false
+#         tags: interview-frontend:latest
+
+#   # AWS Deployment Placeholder (Uncomment when ready to deploy)
+#   deploy:
+#     needs: docker-build
+#     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+#     runs-on: ubuntu-latest
+#     steps:
+#     - name: Checkout
+#       uses: actions/checkout@v4
+      
+#     - name: Configure AWS Credentials
+#       uses: aws-actions/configure-aws-credentials@v1
+#       with:
+#         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#         aws-region: us-east-1 # Change to your region
+
+#     - name: Deploy to AWS (Prototype)
+#       run: |
+#         echo "Starting AWS Deployment..."
+#         # Example: Push to ECR or deploy to EC2 via SSH
+#         # For EC2 with Docker Compose:
+#         # ssh user@host "cd app && docker-compose pull && docker-compose up -d"

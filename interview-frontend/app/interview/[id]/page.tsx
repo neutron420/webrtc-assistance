@@ -10,6 +10,9 @@ import {
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 import { apiFetch, endpoints } from '@/lib/api-client';
 
+import * as tf from '@tensorflow/tfjs';
+import * as cocoSsd from '@tensorflow-models/coco-ssd';
+
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 const getCenteredRatioScore = (value: number, start: number, end: number) => {
@@ -81,8 +84,10 @@ export default function LiveInterviewRoom() {
     console.error("Webcam error:", error);
   };
 
-  // MediaPipe State
+  // Model States
   const [faceLandmarker, setFaceLandmarker] = useState<FaceLandmarker | null>(null);
+  const [objectModel, setObjectModel] = useState<cocoSsd.ObjectDetection | null>(null);
+  
   const [eyeContactScore, setEyeContactScore] = useState(0);
   const [isSmiling, setIsSmiling] = useState(false);
   const [confidenceLevel, setConfidenceLevel] = useState(0);
@@ -114,7 +119,7 @@ export default function LiveInterviewRoom() {
   }, [eyeContactScore, faceLandmarker, multiFaceDetected]);
 
   useEffect(() => {
-    // SECURITY ENGINE v3.5 (Device & Signal Monitoring)
+    // SECURITY ENGINE v4.0 (Enhanced Device & High-Speed Monitoring)
     const monitor = setInterval(() => {
         if (isTerminating) return;
         
@@ -125,14 +130,15 @@ export default function LiveInterviewRoom() {
             if (!violationStartRef.current) violationStartRef.current = performance.now();
             
             const duration = (performance.now() - violationStartRef.current) / 1000;
-            if (duration >= 3) { // 3.0s high-speed security check
+            // Optimized: 1.0s threshold for "instant" capture while filtering noise
+            if (duration >= 1.0) { 
                 setViolations(prev => prev + 1);
                 violationStartRef.current = performance.now(); 
             }
         } else {
             if (!graceStartRef.current) graceStartRef.current = performance.now();
             const graceDuration = (performance.now() - graceStartRef.current) / 1000;
-            if (graceDuration >= 2.0) {
+            if (graceDuration >= 1.5) { // Faster recovery
                 setEyeContactAlert(false);
                 violationStartRef.current = null;
                 graceStartRef.current = null;
@@ -141,12 +147,11 @@ export default function LiveInterviewRoom() {
     }, 200); 
     
     return () => clearInterval(monitor);
-  }, [faceLandmarker, deviceDetected, isTerminating]); // Added isTerminating to deps
+  }, [faceLandmarker, deviceDetected, isTerminating]); 
 
   useEffect(() => {
     if (violations >= 4 && !isTerminating) {
         setIsTerminating(true);
-        // Short delay to show the termination UI before redirecting
         setTimeout(() => {
             handleEndInterview("N/A");
         }, 3000);
@@ -154,7 +159,6 @@ export default function LiveInterviewRoom() {
   }, [violations, isTerminating]);
 
   useEffect(() => {
-    // 0. Check if session is already finalized (Security/Stability Task)
     const checkSessionStatus = async () => {
         try {
             const data = await apiFetch(endpoints.getSessionScoring(numSessionId));
@@ -166,31 +170,37 @@ export default function LiveInterviewRoom() {
     };
     checkSessionStatus();
 
-    // 1. Initialize FaceLandmarker for real-time eye tracking
-    const initMediaPipe = async () => {
+    // 1. Initialize Vision Models (Face & Object Detection)
+    const initVision = async () => {
         try {
+            // Load MediaPipe
             const filesetResolver = await FilesetResolver.forVisionTasks(
                 "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
             );
             const landmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
                 baseOptions: {
                     modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
-                    delegate: "CPU" // Use CPU for wider compatibility during debug
+                    delegate: "GPU"
                 },
                 runningMode: "VIDEO",
-                numFaces: 2 // Allow detecting up to 2 faces for proctoring warnings
+                numFaces: 2
             });
             setFaceLandmarker(landmarker);
+
+            // Load COCO-SSD for Device Detection
+            await tf.ready();
+            const model = await cocoSsd.load();
+            setObjectModel(model);
+
             setIsMediaPipeLoading(false);
-            console.log("MediaPipe initialized successfully.");
+            console.log("Vision engines initialized successfully.");
         } catch (e) {
-            console.error("MediaPipe Init Error:", e);
+            console.error("Vision Init Error:", e);
             setIsMediaPipeLoading(false);
         }
     };
-    initMediaPipe();
+    initVision();
 
-    // 2. Load generated questions from Setup Page
     const stored = localStorage.getItem(`session_${sessionId}_questions`);
     if (stored) {
        setQuestions(JSON.parse(stored));
@@ -202,11 +212,13 @@ export default function LiveInterviewRoom() {
     };
   }, [sessionId, numSessionId]);
 
-  // MediaPipe Detection Loop
+  // Detection Loop (Face + Objects)
   useEffect(() => {
-    if (!faceLandmarker || !webcamRef.current) return;
+    if (!faceLandmarker || !objectModel || !webcamRef.current) return;
 
-    const detect = () => {
+    let detectorBusy = false;
+
+    const detect = async () => {
         if (webcamRef.current && webcamRef.current.video && webcamRef.current.video.readyState === 4) {
             const video = webcamRef.current.video;
             const canvas = canvasRef.current;
@@ -215,72 +227,92 @@ export default function LiveInterviewRoom() {
                 return;
             }
 
-            // Sync canvas resolution slightly less aggressively to save CPU
             if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
             }
 
             const startTimeMs = performance.now();
-            const results = faceLandmarker.detectForVideo(video, startTimeMs);
             
+            // 1. MediaPipe Face Detection
+            const faceResults = faceLandmarker.detectForVideo(video, startTimeMs);
+            
+            // 2. COCO-SSD Object Detection (Mobile Phones, Laptops, etc.)
+            let objects: cocoSsd.DetectedObject[] = [];
+            if (!detectorBusy) {
+                detectorBusy = true;
+                try {
+                    objects = await objectModel.detect(video);
+                } finally {
+                    detectorBusy = false;
+                }
+            }
+
             const ctx = canvas.getContext('2d');
             if (ctx) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
-                if (results.faceLandmarks && results.faceLandmarks.length > 0) {
-                    const landmarks = results.faceLandmarks[0];
+                // --- Process Objects (Devices) ---
+                let phoneFound = false;
+                const prohibitedClasses = ['cell phone', 'laptop', 'book', 'tablet', 'tv'];
+                
+                objects.forEach(obj => {
+                    if (prohibitedClasses.includes(obj.class) && obj.score > 0.55) {
+                        phoneFound = true;
+                        // Draw prohibited item box
+                        ctx.strokeStyle = "#ff4b4b";
+                        ctx.lineWidth = 4;
+                        ctx.setLineDash([5, 5]);
+                        ctx.strokeRect(obj.bbox[0], obj.bbox[1], obj.bbox[2], obj.bbox[3]);
+                        ctx.fillStyle = "#ff4b4b";
+                        ctx.font = "bold 14px Inter";
+                        ctx.fillText(`PROHIBITED: ${obj.class.toUpperCase()}`, obj.bbox[0], obj.bbox[1] - 5);
+                    }
+                });
+                setDeviceDetected(phoneFound);
+                ctx.setLineDash([]); // Reset line dash
+
+                // --- Process Face ---
+                if (faceResults.faceLandmarks && faceResults.faceLandmarks.length > 0) {
+                    const landmarks = faceResults.faceLandmarks[0];
                     
-                    // 1. Calculate Bounding Box
+                    // HUD Drawing
                     let minX = 1, minY = 1, maxX = 0, maxY = 0;
                     landmarks.forEach(lm => {
                         minX = Math.min(minX, lm.x); minY = Math.min(minY, lm.y);
                         maxX = Math.max(maxX, lm.x); maxY = Math.max(maxY, lm.y);
                     });
-
                     const boxX = minX * canvas.width; const boxY = minY * canvas.height;
                     const boxW = (maxX - minX) * canvas.width; const boxH = (maxY - minY) * canvas.height;
 
-                    // 2. HUD Drawing
-                    const activeColor = eyeContactScore > 40 ? "#6ffbbe" : "#ff4b4b";
+                    const activeColor = (eyeContactScore > 40 && !phoneFound) ? "#6ffbbe" : "#ff4b4b";
                     ctx.strokeStyle = activeColor;
                     ctx.lineWidth = 2;
                     ctx.strokeRect(boxX, boxY, boxW, boxH);
                     
-                    // Confidence / Score Calcs
-                    const leftIris = landmarks[468]; 
-                    const rightIris = landmarks[473];
-                    const noseTip = landmarks[1];
-                    const faceLeft = landmarks[234];
-                    const faceRight = landmarks[454];
-                    const leftEyeInner = landmarks[133];
-                    const leftEyeOuter = landmarks[33];
-                    const rightEyeInner = landmarks[362];
-                    const rightEyeOuter = landmarks[263];
+                    const leftIris = landmarks[468]; const rightIris = landmarks[473];
+                    const noseTip = landmarks[1]; const faceLeft = landmarks[234]; const faceRight = landmarks[454];
+                    const leftEyeInner = landmarks[133]; const leftEyeOuter = landmarks[33];
+                    const rightEyeInner = landmarks[362]; const rightEyeOuter = landmarks[263];
 
                     let ecVal = 0;
                     if (leftIris && rightIris) {
                         const lGaze = getCenteredRatioScore(leftIris.x, leftEyeInner.x, leftEyeOuter.x);
                         const rGaze = getCenteredRatioScore(rightIris.x, rightEyeInner.x, rightEyeOuter.x);
-                    const hPose = getCenteredRatioScore(noseTip.x, faceLeft.x, faceRight.x);
+                        const hPose = getCenteredRatioScore(noseTip.x, faceLeft.x, faceRight.x);
                         const vPose = getCenteredRatioScore(noseTip.y, landmarks[10].y, landmarks[152].y);
                         ecVal = ((lGaze + rGaze) / 2) * 60 + hPose * 30 + vPose * 10;
                         
-                        // Device Detection (Heuristic: Low gaze persistence)
-                        if (vPose < 0.28) { // Deep look down
-                            ecVal = Math.min(ecVal, 10);
+                        // Heuristic Device Detection Fallback
+                        if (vPose < 0.28 && !phoneFound) { 
                             setDeviceDetected(true);
-                        } else {
-                            setDeviceDetected(false);
                         }
                         
-                        // Crosshair visualization
                         ctx.fillStyle = "white";
                         [leftIris, rightIris].forEach(iris => {
                             ctx.beginPath(); ctx.arc(iris.x * canvas.width, iris.y * canvas.height, 3, 0, 2 * Math.PI); ctx.fill();
                         });
                     } else {
-                        // Fallback to simpler face centering
                         ecVal = getCenteredRatioScore(noseTip.x, faceLeft.x, faceRight.x) * 45;
                     }
 
@@ -289,29 +321,19 @@ export default function LiveInterviewRoom() {
                     setEyeContactScore(finalEC);
                     setConfidenceLevel(Math.min(100, Math.round(finalEC * 1.2)));
 
-                    // Removed legacy tracking indicators from Canvas (Moved to HTML Overlay)
-
-
-                    // Multi-face detection (Proctoring)
-                    if (results.faceLandmarks.length > 1) {
-                        setMultiFaceDetected(true);
-                    } else {
-                        setMultiFaceDetected(false);
-                    }
+                    if (faceResults.faceLandmarks.length > 1) setMultiFaceDetected(true);
+                    else setMultiFaceDetected(false);
 
                 } else {
                     setEyeContactScore(0);
                     setConfidenceLevel(0);
                 }
             }
-        } else {
-            // Camera not ready or lost
-            setEyeContactScore(0);
         }
         requestRef.current = requestAnimationFrame(detect);
     };
     detect();
-  }, [faceLandmarker, isCameraActive]);
+  }, [faceLandmarker, objectModel, isCameraActive]);
 
 
 
