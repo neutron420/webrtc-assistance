@@ -1,0 +1,16 @@
+#!/bin/bash
+set -euxo pipefail
+
+dnf update -y
+dnf install -y unzip tar gzip
+
+curl -o /usr/local/bin/kubectl -L "https://s3.us-west-2.amazonaws.com/amazon-eks/1.30.0/2024-10-31/bin/linux/amd64/kubectl"
+chmod +x /usr/local/bin/kubectl
+
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+unzip -q /tmp/awscliv2.zip -d /tmp
+/tmp/aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update
+
+mkdir -p /home/ec2-user/.kube
+aws eks update-kubeconfig --name ${cluster_name} --region ${region} --kubeconfig /home/ec2-user/.kube/config
+chown -R ec2-user:ec2-user /home/ec2-user/.kube

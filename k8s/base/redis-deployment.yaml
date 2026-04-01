@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: interview-redis
+  namespace: ai-interview
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: interview-redis
+  template:
+    metadata:
+      labels:
+        app: interview-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi

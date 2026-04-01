@@ -1,0 +1,18 @@
+aws_region            = "ap-south-1"
+project_name          = "webrtc-assistance"
+environment           = "prod"
+
+kubernetes_version    = "1.30"
+node_instance_types   = ["t3.large"]
+node_desired_size     = 2
+node_min_size         = 1
+node_max_size         = 4
+
+argocd_enable         = true
+repo_url              = "https://github.com/neutron420/webrtc-assistance.git"
+repo_target_revision  = "main"
+
+# Optional bastion settings
+enable_bastion        = false
+bastion_allowed_cidr  = "YOUR_IP/32"
+public_key            = "ssh-rsa AAAA...replace-me"
