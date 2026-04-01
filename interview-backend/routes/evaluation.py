@@ -13,6 +13,8 @@ from models.schema import (
     FullScorecardResponse,
     EyeContactUpdate,
     FinalizeRequest,
+    FeedbackChatRequest,
+    FeedbackChatResponse,
 )
 from services.llm_service import llm_service
 from services.analytics_service import analytics_service
@@ -22,6 +24,25 @@ from models.domain import UserProfile, SessionLog, AnswerLog
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+@router.post("/feedback-chat", response_model=FeedbackChatResponse)
+async def feedback_chat(req: FeedbackChatRequest, db: AsyncSession = Depends(get_db)):
+    """Provide follow-up coaching for a previously evaluated answer."""
+    result = await db.execute(select(SessionLog).where(SessionLog.id == req.session_id))
+    session = result.scalars().first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    reply = await llm_service.generate_feedback_followup(
+        question_text=req.question_text,
+        transcript=req.transcript,
+        initial_feedback=req.initial_feedback,
+        student_question=req.student_question,
+        technical_grade=req.technical_grade,
+    )
+
+    return FeedbackChatResponse(reply=reply)
 
 
 @router.post("/submit-answer", response_model=ScorecardResponse)

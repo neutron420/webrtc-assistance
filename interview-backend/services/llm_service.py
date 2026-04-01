@@ -320,6 +320,67 @@ If technical is low, focus on DSA practice. If confidence is low, focus on body 
             ]
         }
 
+    async def generate_feedback_followup(
+        self,
+        question_text: str,
+        transcript: str,
+        initial_feedback: str,
+        student_question: str,
+        technical_grade: str | None = None,
+    ) -> str:
+        """Generate targeted coaching follow-up based on one answer's context."""
+        if not self.client:
+            return (
+                "Great question. Focus on one concrete improvement first: "
+                "use STAR clearly (Situation, Task, Action, Result), "
+                "add one measurable outcome, and remove filler words by pausing briefly."
+            )
+
+        prompt = f"""You are an elite interview coach.
+The student is asking a follow-up question about how to improve their previous answer.
+
+Question asked in interview:
+{question_text}
+
+Student transcript:
+{transcript}
+
+Initial evaluator feedback:
+{initial_feedback}
+
+Technical grade (if available): {technical_grade or 'N/A'}
+
+Student follow-up question:
+{student_question}
+
+Instructions:
+1. Give specific, practical coaching tied to this exact answer.
+2. If technical parts were weak, correct them plainly and provide a better framing.
+3. Keep response concise but useful.
+4. End with a short 3-bullet action plan for the next attempt.
+"""
+
+        try:
+            kwargs = {
+                "model": self.model,
+                "messages": [
+                    {"role": "system", "content": "You are a strict but supportive interview coach."},
+                    {"role": "user", "content": prompt},
+                ],
+            }
+            response = await self.client.chat.completions.create(**kwargs)
+            content = (response.choices[0].message.content or "").strip()
+            if content:
+                return content
+        except Exception as e:
+            logger.error(f"generate_feedback_followup failed: {str(e)}")
+
+        return (
+            "Focus on clarity and specificity: directly answer the question, "
+            "show your actions step-by-step, and include a measurable result. "
+            "For technical parts, explain the tradeoff and why your approach was correct."
+        )
+
 
 # Singleton instance
 llm_service = LLMService()

@@ -47,6 +47,9 @@ const LiveSession = () => {
   const [showLandmarks, setShowLandmarks] = useState(true);
   const [latestAnswerFeedback, setLatestAnswerFeedback] = useState("");
   const [latestAnswerGrade, setLatestAnswerGrade] = useState("");
+  const [feedbackChatInput, setFeedbackChatInput] = useState("");
+  const [feedbackChatLoading, setFeedbackChatLoading] = useState(false);
+  const [feedbackChatMessages, setFeedbackChatMessages] = useState<Array<{ role: "user" | "assistant"; text: string }>>([]);
 
   useEffect(() => {
     transcriptRef.current = transcript;
@@ -257,6 +260,8 @@ const LiveSession = () => {
       setCues([]);
       setLatestAnswerFeedback("");
       setLatestAnswerGrade("");
+      setFeedbackChatInput("");
+      setFeedbackChatMessages([]);
 
       wsRef.current.onmessage = (event) => {
         const data = JSON.parse(event.data);
@@ -422,8 +427,57 @@ const LiveSession = () => {
       } else {
         setLatestAnswerGrade("");
       }
+
+      setFeedbackChatMessages([
+        {
+          role: "assistant",
+          text: "If you want deeper coaching, ask me anything about how to improve this answer.",
+        },
+      ]);
     } catch (error) {
       console.error("Failed to submit answer", error);
+    }
+  };
+
+  const sendFeedbackFollowup = async () => {
+    if (!sessionId || !latestAnswerFeedback || !feedbackChatInput.trim() || feedbackChatLoading) return;
+
+    const userText = feedbackChatInput.trim();
+    setFeedbackChatInput("");
+    setFeedbackChatMessages((prev) => [...prev, { role: "user", text: userText }]);
+    setFeedbackChatLoading(true);
+
+    try {
+      const result = await apiFetch(endpoints.feedbackChat, {
+        method: "POST",
+        body: JSON.stringify({
+          session_id: sessionId,
+          question_text: questions[currentQuestionIndex] || "Behavioral prompt",
+          transcript: transcriptRef.current || transcript,
+          initial_feedback: latestAnswerFeedback,
+          technical_grade: latestAnswerGrade || undefined,
+          student_question: userText,
+        }),
+      });
+
+      setFeedbackChatMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text: String(result?.reply || "Try one focused improvement at a time and then re-answer the question."),
+        },
+      ]);
+    } catch (error) {
+      console.error("Feedback follow-up failed", error);
+      setFeedbackChatMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text: "I could not generate follow-up feedback right now. Please try again in a few seconds.",
+        },
+      ]);
+    } finally {
+      setFeedbackChatLoading(false);
     }
   };
 
@@ -467,6 +521,8 @@ const LiveSession = () => {
       setCues([]);
       setLatestAnswerFeedback("");
       setLatestAnswerGrade("");
+      setFeedbackChatInput("");
+      setFeedbackChatMessages([]);
     } else {
       await finalizeAndExit();
     }
@@ -632,6 +688,54 @@ const LiveSession = () => {
                             <p className="text-xs font-bold text-emerald-800 mb-2">Grade: {latestAnswerGrade}</p>
                           )}
                           <p className="text-sm text-emerald-900 leading-relaxed">{latestAnswerFeedback}</p>
+                        </div>
+                      )}
+
+                      {latestAnswerFeedback && (
+                        <div className="bg-card border border-border rounded-xl p-4 space-y-3 animate-in fade-in">
+                          <p className="text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase">Ask AI For Improvement</p>
+
+                          <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+                            {feedbackChatMessages.map((msg, idx) => (
+                              <div
+                                key={idx}
+                                className={`rounded-lg p-3 text-sm leading-relaxed ${
+                                  msg.role === "user"
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-secondary text-foreground"
+                                }`}
+                              >
+                                {msg.text}
+                              </div>
+                            ))}
+                            {feedbackChatLoading && (
+                              <div className="rounded-lg p-3 text-sm bg-secondary text-foreground/80 italic">
+                                Thinking...
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex gap-2">
+                            <input
+                              value={feedbackChatInput}
+                              onChange={(e) => setFeedbackChatInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  void sendFeedbackFollowup();
+                                }
+                              }}
+                              placeholder="Ask: What should I improve more?"
+                              className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                            />
+                            <Button
+                              size="sm"
+                              onClick={() => void sendFeedbackFollowup()}
+                              disabled={feedbackChatLoading || !feedbackChatInput.trim()}
+                            >
+                              Ask
+                            </Button>
+                          </div>
                         </div>
                       )}
                 </div>

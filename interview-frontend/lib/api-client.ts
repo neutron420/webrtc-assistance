@@ -42,6 +42,7 @@ export const endpoints = {
   setupSession: '/session/setup',
   getSessionScoring: (id: number) => `/scoring/session/${id}`,
   submitAnswer: '/scoring/submit-answer',
+  feedbackChat: '/scoring/feedback-chat',
   updateEyeContact: '/scoring/eye-contact',
   finalizeSession: (id: number) => `/scoring/finalize/${id}`,
 };

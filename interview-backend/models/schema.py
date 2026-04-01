@@ -175,3 +175,16 @@ class StudyPlanResponse(BaseModel):
     recommended_topics: List[str]
     practice_questions: List[str]
     resources: List[str]
+
+
+class FeedbackChatRequest(BaseModel):
+    session_id: int
+    question_text: str
+    transcript: str
+    initial_feedback: str
+    student_question: str = Field(..., min_length=2, max_length=1000)
+    technical_grade: Optional[str] = None
+
+
+class FeedbackChatResponse(BaseModel):
+    reply: str
