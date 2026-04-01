@@ -61,7 +61,7 @@ export default function SetupDashboard() {
 
         localStorage.setItem(`session_${data.session_id}_questions`, JSON.stringify(data.questions));
         localStorage.setItem('active_session_id', data.session_id.toString());
-        router.push(`/interview/${data.session_id}`);
+        router.push('/live');
 
     } catch (err: any) {
         setError(err.message);

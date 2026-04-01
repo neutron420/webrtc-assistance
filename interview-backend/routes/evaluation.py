@@ -133,13 +133,17 @@ async def update_eye_contact(req: EyeContactUpdate, db: AsyncSession = Depends(g
         (1 - alpha) * session.avg_eye_contact + alpha * req.eye_contact_score, 1
     )
 
+    # Capture value before commit to avoid accessing expired ORM attributes
+    # after transaction completion (can trigger MissingGreenlet in async mode).
+    current_eye_contact_avg = session.avg_eye_contact
+
     await db.commit()
     logger.info(f"Eye contact updated for session {req.session_id}: {req.eye_contact_score}%")
 
     return {
         "status": "updated",
         "session_id": req.session_id,
-        "current_eye_contact_avg": session.avg_eye_contact,
+        "current_eye_contact_avg": current_eye_contact_avg,
     }
 
 

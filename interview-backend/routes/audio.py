@@ -93,8 +93,11 @@ async def audio_stream_websocket(websocket: WebSocket):
 
     audio_buffer = []
     accumulated_transcript = ""
+    last_transcript_chunk = ""
     last_transcription_time = 0
     min_transcription_interval = 3  # Only transcribe every 3 seconds minimum
+    running_filler_total = 0
+    stream_sample_rate = 16000
 
     try:
         while True:
@@ -106,28 +109,36 @@ async def audio_stream_websocket(websocket: WebSocket):
             if msg_type == "audio_chunk":
                 # Collect audio chunks
                 audio_data = data.get("audio_data", [])
+                incoming_sample_rate = data.get("sample_rate")
+                if isinstance(incoming_sample_rate, (int, float)) and incoming_sample_rate > 0:
+                    stream_sample_rate = int(incoming_sample_rate)
+
                 if audio_data:
                     audio_buffer.extend(audio_data)
                 
-                # Transcribe only after accumulating ~3 seconds of audio (24000 samples at 8kHz)
+                # Transcribe only after accumulating ~3 seconds of audio at the current stream sample rate.
                 # and respecting minimum interval to avoid rate limiting
                 current_time = time.time()
+                target_samples = max(8000, int(stream_sample_rate * 3))
                 should_transcribe = (
-                    len(audio_buffer) >= 24000 and 
+                    len(audio_buffer) >= target_samples and 
                     (current_time - last_transcription_time) >= min_transcription_interval
                 )
                 
                 if should_transcribe:
                     # Convert int16 array to bytes
                     try:
-                        audio_bytes = bytes([b for sample in audio_buffer[:24000] for b in [sample & 0xFF, (sample >> 8) & 0xFF]])
+                        chunk = audio_buffer[:target_samples]
+                        pcm_samples = [max(-32768, min(32767, int(sample))) for sample in chunk]
+                        audio_bytes = b"".join(sample.to_bytes(2, byteorder="little", signed=True) for sample in pcm_samples)
                         
                         # Transcribe with retry logic built into the service
-                        transcript_chunk = await whisper_service.transcribe_audio_bytes(audio_bytes)
+                        transcript_chunk = await whisper_service.transcribe_audio_bytes(audio_bytes, sample_rate=stream_sample_rate)
                         transcript_text = transcript_chunk.get("text", "").strip()
                         
-                        if transcript_text and transcript_text not in accumulated_transcript:
+                        if transcript_text and transcript_text != last_transcript_chunk:
                             accumulated_transcript += " " + transcript_text
+                            last_transcript_chunk = transcript_text
                             last_transcription_time = current_time
                             
                             # Send transcript chunk to client
@@ -141,16 +152,16 @@ async def audio_stream_websocket(websocket: WebSocket):
                             logger.info(f"Streamed transcript: {transcript_text}")
                         
                         # Remove processed samples
-                        audio_buffer = audio_buffer[24000:]
+                        audio_buffer = audio_buffer[target_samples:]
                         
                     except Exception as e:
                         logger.error(f"Error transcribing chunk: {str(e)}")
                         # Don't crash, just skip this chunk
-                        audio_buffer = audio_buffer[24000:] if len(audio_buffer) > 24000 else []
+                        audio_buffer = audio_buffer[target_samples:] if len(audio_buffer) > target_samples else []
 
             elif msg_type == "metrics_update":
                 wpm = data.get("wpm", 0)
-                filler_count = data.get("filler_count", 0)
+                filler_count = int(data.get("filler_count", 0) or 0)
                 eye_contact = data.get("eye_contact_score", 100)
                 mood = data.get("mood", "Neutral")
                 transcript_chunk = data.get("transcript_chunk", "")
@@ -159,7 +170,10 @@ async def audio_stream_websocket(websocket: WebSocket):
                 chunk_fillers = {}
                 if transcript_chunk:
                     chunk_fillers = analytics_service.detect_filler_words(transcript_chunk)
-                    filler_count += analytics_service.get_filler_word_total(chunk_fillers)
+                    running_filler_total += analytics_service.get_filler_word_total(chunk_fillers)
+
+                # Keep cumulative filler total monotonic and robust to client refreshes.
+                filler_count = max(filler_count, running_filler_total)
 
                 # Generate confidence score
                 confidence_score = analytics_service.calculate_confidence_score(

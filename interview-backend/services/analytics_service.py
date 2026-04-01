@@ -144,6 +144,10 @@ class AnalyticsService:
             # Randomly encourage to smile if they've been neutral for a while (would need state, but let's keep it simple)
             pass 
 
+        # Keep a visible live-feedback signal when user is speaking and no correction is needed.
+        if not cues and wpm > 0:
+            cues.append("✅ Good pacing and delivery. Keep this rhythm.")
+
         return cues
 
 

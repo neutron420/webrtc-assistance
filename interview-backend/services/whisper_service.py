@@ -2,6 +2,7 @@ import logging
 import asyncio
 import os
 import time
+import struct
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,30 @@ class WhisperService:
             self.client = None
             logger.warning("GROQ_API_KEY not found. Falling back to OpenAI (legacy).")
 
+    @staticmethod
+    def _pcm16le_to_wav(audio_bytes: bytes, sample_rate: int = 16000, channels: int = 1) -> bytes:
+        """
+        Wrap raw PCM16 little-endian bytes in a WAV container.
+        Groq transcription endpoints require a valid media file, not raw PCM payloads.
+        """
+        bits_per_sample = 16
+        block_align = channels * (bits_per_sample // 8)
+        byte_rate = sample_rate * block_align
+        data_size = len(audio_bytes)
+        riff_chunk_size = 36 + data_size
+
+        header = b"".join([
+            b"RIFF",
+            struct.pack("<I", riff_chunk_size),
+            b"WAVE",
+            b"fmt ",
+            struct.pack("<IHHIIHH", 16, 1, channels, sample_rate, byte_rate, block_align, bits_per_sample),
+            b"data",
+            struct.pack("<I", data_size),
+        ])
+
+        return header + audio_bytes
+
     async def transcribe_audio(self, file_path: str) -> dict:
         """
         Transcribes audio using Groq Whisper (preferentially) or OpenAI.
@@ -36,6 +61,8 @@ class WhisperService:
                         file=(os.path.basename(file_path), f.read()),
                         model="whisper-large-v3",
                         response_format="verbose_json",
+                        language="en",
+                        temperature=0,
                     )
                 text = transcription.text.strip()
                 duration = getattr(transcription, "duration", 0)
@@ -48,7 +75,7 @@ class WhisperService:
                 def post_audio():
                     with open(file_path, "rb") as f:
                         files = {"file": (os.path.basename(file_path), f, "audio/webm")}
-                        data = {"model": "whisper-1", "response_format": "verbose_json"}
+                        data = {"model": "whisper-1", "response_format": "verbose_json", "language": "en", "temperature": 0}
                         return requests.post(url, headers=headers, files=files, data=data, timeout=60)
 
                 response = await asyncio.to_thread(post_audio)
@@ -74,7 +101,7 @@ class WhisperService:
             logger.error(f"Transcription Error: {str(e)}")
             return {"text": "", "duration": 0}
 
-    async def transcribe_audio_bytes(self, audio_bytes: bytes, retries: int = 3) -> dict:
+    async def transcribe_audio_bytes(self, audio_bytes: bytes, sample_rate: int = 16000, retries: int = 3) -> dict:
         """
         Transcribes audio bytes (for streaming/real-time transcription).
         """
@@ -83,11 +110,14 @@ class WhisperService:
 
         try:
             if self.groq_api_key:
-                # Groq is fast enough that we don't need heavy retry logic here usually
+                safe_sample_rate = int(sample_rate) if sample_rate and sample_rate > 0 else 16000
+                wav_bytes = self._pcm16le_to_wav(audio_bytes, sample_rate=safe_sample_rate, channels=1)
                 transcription = await self.client.audio.transcriptions.create(
-                    file=("chunk.wav", audio_bytes),
+                    file=("chunk.wav", wav_bytes),
                     model="whisper-large-v3",
                     response_format="verbose_json",
+                    language="en",
+                    temperature=0,
                 )
                 text = transcription.text.strip()
                 duration = getattr(transcription, "duration", 0)
